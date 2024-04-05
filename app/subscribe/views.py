@@ -72,11 +72,11 @@ class UserSubscriptionList(APIView):
         pools = [{"name": "Ethereum"}, {"name": "Solana"}]
 
         data = dict(
-            news = dict(message_type=0, list=my_subscribed.get('news', {"switch": "off"})),
-            twitter = dict(message_type=1, list=[{**twitter, 'subscribed': twitter['twitter'] in my_subscribed.get('twitter', [])} for twitter in twitters]),
-            announcement = dict(message_type=2, list=[{**exchange, 'subscribed': exchange['id'] in my_subscribed.get('announcement', [])} for exchange in exchanges]),
-            trade = dict(message_type=3, list=my_subscribed.get('trade', [])),
-            pool = dict(message_type=4, list=[{**pool, 'subscribed': pool['name'] in my_subscribed.get('pool', [])} for pool in pools]),
+            news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "off"})),
+            twitter = dict(message_type=1, content=[{**twitter, 'subscribed': twitter['twitter'] in my_subscribed.get('twitter', [])} for twitter in twitters]),
+            announcement = dict(message_type=2, content=[{**exchange, 'subscribed': exchange['id'] in my_subscribed.get('announcement', [])} for exchange in exchanges]),
+            trade = dict(message_type=3, content=my_subscribed.get('trade', [])),
+            pool = dict(message_type=4, content=[{**pool, 'subscribed': pool['name'] in my_subscribed.get('pool', [])} for pool in pools]),
         )
         return Response(dict(data=data))
     
