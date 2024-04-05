@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.utils.timezone import now
+from django.core.exceptions import ValidationError
 
 
 class UserSubscription(models.Model):
@@ -14,6 +15,23 @@ class UserSubscription(models.Model):
     class Meta:
         db_table = 'user_subscription'
         unique_together = (('message_type', 'user'),)
+
+    def clean(self):
+        if self.message_type < 0 or self.message_type > 4:
+            raise ValidationError({'content': 'Must between 0 and 4.'})
+        if self.message_type == 0:
+            if not isinstance(self.content, dict):
+                raise ValidationError({'content': 'Must be a dictionary.'})
+        elif self.message_type == 2:
+            if not (isinstance(self.content, list) and all(isinstance(item, int) for item in self.content)):
+                raise ValidationError({'content': 'Must be a list of integers.'})
+        elif self.message_type in [1,3,4]:
+            if not (isinstance(self.content, list) and all(isinstance(item, str) for item in self.content)):
+                raise ValidationError({'content': 'Must be a list of strings.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
