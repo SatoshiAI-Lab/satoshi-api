@@ -26,13 +26,13 @@ class UserSubscriptionUpdate(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, message_type, *args, **kwargs):
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type).first()
-        if not subscription.DoesNotExist:
+        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
+        if not subscription.exists():
             return Response(dict(data={"message": "Subscription not found."}), status=status.HTTP_404_NOT_FOUND)
         
         mutable_data = request.data.copy()
         mutable_data['message_type'] = message_type
-        serializer = UserSubscriptionSerializer(subscription, data=mutable_data)
+        serializer = UserSubscriptionSerializer(subscription.first(), data=mutable_data)
         if serializer.is_valid():
             serializer.save()
             return Response(dict(data=serializer.data))
