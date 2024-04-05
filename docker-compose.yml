@@ -1,0 +1,92 @@
+version: "3.9"
+
+volumes:
+  grafana_storage: {}
+  prometheus_data: {}
+
+networks:
+  satoshi-link:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.1.0/24
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/Dockerfile
+    image: satoshi_django_image:latest
+    container_name: satoshi_django_container
+    volumes:
+      - ./app:/app
+    restart: always
+    depends_on:
+      - redis
+    networks:
+      - satoshi-link
+    env_file:
+      - ./.env
+    ports:
+      - "10101:10101"
+
+  redis:
+    image: redis:7.2.1-alpine3.18
+    container_name: satoshi_redis_container
+    restart: always
+    networks:
+      - satoshi-link
+
+  celeryworker:
+    <<: *django
+    image: satoshi_celeryworker_image:latest
+    container_name: satoshi_celery_container
+    env_file:
+      - ./.env
+    restart: always
+    ports: []
+    command: /start-celeryworker
+    networks:
+      - satoshi-link
+    depends_on:
+      - redis
+
+  flower:
+    image: mher/flower:latest
+    container_name: satoshi_flower_container
+    restart: always
+    ports:
+      - "5555:5555" 
+    env_file:
+      - ./.env
+    networks:
+      - satoshi-link
+    depends_on:
+      - celeryworker
+
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_LOG_LEVEL=debug
+    ports:
+      - '3000:3000'
+    volumes:
+      - 'grafana_storage:/var/lib/grafana'
+    networks:
+      - satoshi-link
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - '9090:9090'
+    command: 
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - satoshi-link
