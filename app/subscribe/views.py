@@ -12,11 +12,15 @@ class UserSubscriptionCreate(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = UserSubscriptionSerializer(data=request.data)
-        if serializer.is_valid():
+        if not serializer.is_valid():
+            return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=request.data['message_type'])
+        if not subscription.exists():
             serializer.save(user=request.user)
-            return Response(dict(data=serializer.data), status=status.HTTP_201_CREATED)
-        
-        return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        else:
+            subscription.update(**request.data)
+            return Response(dict(data=serializer.data))
+        return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
 
 class UserSubscriptionUpdate(APIView):
     permission_classes = [IsAuthenticated]
@@ -54,7 +58,7 @@ class UserSubscriptionDelete(APIView):
             return Response(dict(data={"message": "Subscription not found."}), status=status.HTTP_404_NOT_FOUND)
         
         subscription.delete()
-        return Response(dict(data={"message": "Subscription deleted."}), status=status.HTTP_204_NO_CONTENT)
+        return Response(dict(data={"message": "Subscription deleted."}), status=status.HTTP_200_OK)
     
 class UserSubscriptionList(APIView):
     permission_classes = [IsAuthenticated]
