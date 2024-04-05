@@ -20,8 +20,8 @@ class UserSubscription(models.Model):
         if self.message_type < 0 or self.message_type > 4:
             raise ValidationError({'content': 'Must between 0 and 4.'})
         if self.message_type == 0:
-            if not isinstance(self.content, dict):
-                raise ValidationError({'content': 'Must be a dictionary.'})
+            if not isinstance(self.content, dict) or not 'switch' in self.content:
+                raise ValidationError({'content': 'Must be a dictionary containing switch.'})
         elif self.message_type == 2:
             if not (isinstance(self.content, list) and all(isinstance(item, int) for item in self.content)):
                 raise ValidationError({'content': 'Must be a list of integers.'})
