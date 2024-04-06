@@ -1,10 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.db import transaction
+from django.db.models import F, Q
+
 from .models import UserSubscription, TwitterUser, Exchange, TradeAddress
 from .serializers import UserSubscriptionSerializer
 from rest_framework.permissions import IsAuthenticated
 from utils.constants import *
+
+import requests
+import json
+import os
 
 
 class UserSubscriptionCreate(APIView):
@@ -14,12 +21,71 @@ class UserSubscriptionCreate(APIView):
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=request.data['message_type'])
+        
+        old_content = []
+        new_content = request.data['content']
+        message_type = request.data['message_type']
+        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
         if not subscription.exists():
             serializer.save(user=request.user)
         else:
+            old_content = subscription.first()['content']
             subscription.update(**request.data)
-            return Response(dict(data=serializer.data))
+        
+        if message_type != 3:
+            return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
+        
+        old_addresses_set = set(old_content)
+        new_addresses_set = set(new_content)
+        add_addresses_set = new_addresses_set - old_addresses_set
+        del_addresses_set = old_addresses_set - new_addresses_set
+
+        with transaction.atomic():
+            involved_records = TradeAddress.objects.filter(
+                Q(address__in=add_addresses_set) | Q(address__in=del_addresses_set)
+            )
+            involved_records_dict = {record.address: record for record in involved_records}
+
+            to_create = []
+            to_create_addresses = []
+            for address in add_addresses_set:
+                if address in involved_records_dict:
+                    record = involved_records_dict[address]
+                    record.count = F('count') + 1
+                else:
+                    to_create.append(TradeAddress(address=address))
+                    to_create_addresses.append(address)
+            if to_create:
+                TradeAddress.objects.bulk_create(to_create)
+                requests.request(
+                    "POST", 
+                    f"{os.getenv('SUB_API')}/monitor/address/", 
+                    headers={
+                        'Content-Type': 'application/json',
+                    }, 
+                    data=json.dumps({
+                        "addresses": to_create_addresses
+                    }),
+                )
+
+            to_reduce_qs = TradeAddress.objects.filter(address__in=del_addresses_set).annotate(new_count=F('count') - 1)
+            to_delete_addresses = [record.address for record in to_reduce_qs if record.new_count < 1]
+            to_reduce_addresses = [record.address for record in to_reduce_qs if record.new_count >= 1]
+            if to_reduce_addresses:
+                TradeAddress.objects.filter(address__in=to_reduce_addresses).update(count=F('count') - 1)
+            if to_delete_addresses:
+                TradeAddress.objects.filter(address__in=to_delete_addresses).delete()
+                requests.request(
+                    "DELETE", 
+                    f"{os.getenv('SUB_API')}/monitor/address/", 
+                    headers={
+                        'Content-Type': 'application/json',
+                    }, 
+                    data=json.dumps({
+                        "addresses": to_delete_addresses
+                    }),
+                )
+
         return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
 
 class UserSubscriptionUpdate(APIView):

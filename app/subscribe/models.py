@@ -44,6 +44,7 @@ class TradeAddress(BaseModel):
     address = models.CharField(max_length=42)
     name = models.CharField(max_length=100)
     remark = models.CharField(max_length=300)
+    count = models.IntegerField(default=1)
     is_global = models.IntegerField(default=0)
     
     class Meta:
