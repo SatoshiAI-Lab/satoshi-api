@@ -67,7 +67,7 @@ class UserSubscriptionList(APIView):
         subscriptions = UserSubscription.objects.filter(user_id=request.user)
         my_subscribed = {MESSAGE_TYPE_DICT[s.message_type]: s.content for s in subscriptions}
 
-        twitters = TwitterUser.objects.filter(is_deleted=0).values('id', 'twitter', 'name', 'logo')
+        twitters = TwitterUser.objects.filter(is_deleted=0).values('twitter_id', 'name', 'logo')
         exchanges = Exchange.objects.filter(announcement_subable=1).values('id', 'slug', 'name')
         pools = [{"name": "Ethereum"}, {"name": "Solana"}]
 
