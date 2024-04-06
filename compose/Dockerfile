@@ -3,8 +3,6 @@ FROM python:3.11.5-alpine3.18 AS builder
 ENV PYTHONUNBUFFERED 1
 
 RUN apk update && apk add --no-cache build-base curl gcc musl-dev openssl-dev libffi-dev
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:$PATH"
 
 RUN apk --no-cache add \
   libffi-dev \
@@ -23,8 +21,6 @@ COPY ./requirements.txt /requirements.txt
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     /py/bin/pip install -r /requirements.txt --use-pep517
-
-RUN /py/bin/pip install eth-keys==0.5.0 eth-account==0.12.0 solana==0.33.0 base58==2.1.1
 
 RUN /py/bin/pip install "git+https://github.com/saurav-codes/django-cryptography"
 

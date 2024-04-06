@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from eth_keys import keys
-from solders.keypair import Keypair
+from nacl.signing import SigningKey
 import base58
 import json
 
@@ -85,8 +85,9 @@ class ImportPrivateKeyView(APIView):
             data['public_key'] = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
         elif platform == 'SOL':
             private_key_bytes = base58.b58decode(private_key)
-            keypair = Keypair.from_bytes(private_key_bytes)
-            data['public_key'] = str(keypair.pubkey())
+            signing_key = SigningKey(seed=private_key_bytes[:32])
+            public_key_bytes = signing_key.verify_key.encode()
+            data['public_key'] = base58.b58encode(public_key_bytes).decode('utf-8')
 
         serializer = PrivateKeySerializer(data=data)
         if serializer.is_valid():
