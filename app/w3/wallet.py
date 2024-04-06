@@ -5,6 +5,8 @@ import os
 import requests
 from eth_account import Account
 
+from covalent import CovalentClient
+
 
 class WalletHandler():
     def __init__(self, platform) -> None:
@@ -26,49 +28,39 @@ class WalletHandler():
             publicKey = account._key_obj.public_key.to_hex()
         return secretKey, publicKey
     
-    def get_decimals(self, address):
-        cache_key = f"satoshi:decimals:{address}"
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return cached_data
-        
-        if self.platform == 'SOL':
-            decimals = 6
-            if address == 'So11111111111111111111111111111111111111112':
-                decimals = 9
-            elif address in ['Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']:
-                decimals = 6
-        else:
-            decimals = 18
-            
-        cache.set(cache_key, decimals, timeout=3600)
-        
-        return decimals
-    
     def get_balances(self, address):
         cache_key = f"satoshi:balances:{address}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
         
+        c = CovalentClient(os.getenv('CQT_KEY'))
         if self.platform == 'SOL':
-            url = f"{self.vybenetwork_domain}/account/token-balance/{address}"
-            headers = {
-                'X-API-Key': os.getenv('VYBENETWORK_KEY'),
-                'accept': 'application/json',
-            }
-            response = requests.request("GET", url, headers=headers, json={})
-            
-            if response.status_code != 200:
-                return dict()
-            
-            data = json.loads(response.text)
-            json_data = dict(address=address, value=data.get('valueUsd', 0), tokens=data.get('data', []))
+            network_name = 'solana-mainnet'
+            b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
+            if b.error:
+                json_data = dict(address=address, value=0, tokens=[])
+            else:
+                items = b.data.items
+                tokens = []
+                value = 0
+                for item in items:
+                    tokens.append(dict(
+                        symbol = item.contract_ticker_symbol,
+                        name = item.contract_name,
+                        decimals = item.contract_decimals,
+                        amount = item.balance,
+                        address = item.contract_address,
+                        priceUsd = item.quote_rate,
+                        valueUsd = item.quote,
+                        logoUrl = item.logo_url,
+                    ))
+                    value += item.quote
+                json_data = dict(address=address, value=value, tokens=tokens)      
         else:
             json_data = dict(address=address, value=0, tokens=[])
             
-        cache.set(cache_key, json_data, timeout=90)
-        
+        cache.set(cache_key, json_data, timeout=10)
         return json_data
     
     def token_transaction(self, private_key, input_token, output_token, amount, slippageBps):

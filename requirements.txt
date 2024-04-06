@@ -31,3 +31,5 @@ aiohttp==3.9.3
 # eth-account==0.12.0
 # solana==0.33.0
 # base58==2.1.1
+
+covalent-api-sdk==0.9.8
