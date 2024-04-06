@@ -136,7 +136,7 @@ class WalletBalanceAPIView(APIView):
         platform = request.query_params.get('platform', 'SOL')
         wallet_handler = WalletHandler(platform)
         data = wallet_handler.get_balances(pk)
-        return Response(dict(data=dict(address=pk,token=data.get('value', 0),tokens=data.get('tokens', []))))
+        return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []))))
 
 
 class WalletTransactionView(APIView):
