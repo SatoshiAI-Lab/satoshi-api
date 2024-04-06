@@ -11,14 +11,15 @@ from rest_framework import status
 from . import forms, models, serializers
 import os
 from urllib.parse import urljoin
+from users import models as user_models
 
 
-class SearchView(APIView):
+class CoinSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
     @method_decorator(cache_page(5 * 60))
     def get(self, request):
-        form = forms.SearchForms(request.query_params)
+        form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
             return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         kw = request.query_params['kw']
@@ -60,3 +61,26 @@ class SearchView(APIView):
                 continue
         data['coin'] = ser_data[:num]
         return Response(dict(data=data), status=status.HTTP_200_OK)
+
+class CoinListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # @method_decorator(cache_page(60 * 10))
+    def post(self, request):
+        form = forms.CoinListForms(request.data)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+
+        uid = request.user.id
+        if uid:
+            ids = user_models.User.objects.filter(id=uid).first().ids
+        else:
+            ids = request.data.get('ids')
+        if not ids:
+            return Response(dict(data=dict(list=[])), status=status.HTTP_200_OK)
+
+        token_ids = [i['id'] for i in ids if i['type'] == 1]
+        t_models = models.Coin.objects.using('source').filter(id__in=token_ids)
+        token_data = serializers.CoinListSerializer(t_models, many=True).data
+
+        return Response(dict(data=dict(list=token_data)), status=status.HTTP_200_OK)

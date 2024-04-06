@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from eth_keys import keys
 from solders.keypair import Keypair
 import base58
+import json
 
 from w3.wallet import WalletHandler
 
@@ -168,4 +169,36 @@ class WalletTransactionView(APIView):
         )
 
         return Response(dict(data=dict(hash_tx=hash_tx)), status=status.HTTP_200_OK)
-    
+
+
+class UserSelect(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        form = forms.UserSelectForms(request.data)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+        ids = form.data['ids']
+        select_status = int(request.data['status'])
+        
+        user_obj = User.objects.filter(id=request.user.id)
+        existed_ids = user_obj.first().ids or []
+        for id in ids:
+            # add
+            if select_status == 1:
+                if id not in existed_ids:
+                    existed_ids.insert(0,id)
+            # remove
+            elif select_status == 2:
+                if id in existed_ids:
+                    existed_ids.remove(id)
+            # top
+            elif select_status == 3:
+                if id in existed_ids:
+                    existed_ids.remove(id)
+                    existed_ids.insert(0,id)
+        while len(existed_ids) > 300:
+            del existed_ids[0]
+
+        user_obj.update(ids=json.dumps(existed_ids))
+        return Response(dict(data=dict(ids=existed_ids)), status=status.HTTP_200_OK)

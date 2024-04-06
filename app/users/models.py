@@ -24,6 +24,8 @@ class User(AbstractUser):
     added_at = models.DateTimeField(
         auto_now_add=True,
     )
+    ids = models.JSONField(blank=True, null=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -103,3 +105,15 @@ class WalletLog(models.Model):
     class Meta:
         db_table = 'users_wallet_log'
         unique_together = (('hash_tx', 'platform'),)
+
+# class UserSelection(models.Model):
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+#     type = models.SmallIntegerField()
+#     tid = models.IntegerField()
+#     user = models.ForeignKey('User', on_delete=models.CASCADE)
+#     added_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = 'user_selection'
+#         unique_together = (('user', 'type', 'tid'),)
+ 

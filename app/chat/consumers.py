@@ -108,7 +108,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 url = f"{os.getenv('SUB_API')}/message_post"
                 response_text = await self.fetch(session, url, dict(user_id=user_id, language='en', content=subscriptions_dict))
 
-            data = json.loads(response_text).get('data', [])
+            try:
+                data = json.loads(response_text).get('data', [])
+            except:
+                continue
             new_data = [news for news in data if news["id"] not in sent_data]   
             sent_data.update([news["id"] for news in new_data])
             if new_data:
