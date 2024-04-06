@@ -12,6 +12,7 @@ from . import forms, models, serializers
 import os
 from urllib.parse import urljoin
 from users import models as user_models
+from users.permissions import OptionalAuthentication
 
 
 class CoinSearchView(APIView):
@@ -63,7 +64,7 @@ class CoinSearchView(APIView):
         return Response(dict(data=data), status=status.HTTP_200_OK)
 
 class CoinListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [OptionalAuthentication]
 
     # @method_decorator(cache_page(60 * 10))
     def post(self, request):
