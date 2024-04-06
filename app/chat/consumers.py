@@ -84,8 +84,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def chat_message(self, event):
         connected_user_model = self.scope["user"]
-        message = event["message"]
         user_id = str(connected_user_model.id)
+        message = event["message"]
+        try:
+            message = json.loads(message)
+        except:
+            pass
         
         await self.send(text_data=json.dumps({"type": "message", "data": message, "user_id": user_id}, ensure_ascii=False))
 
