@@ -2,7 +2,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 from .models import User, Wallet, WalletLog
-from .serializers import UserSerializer, WalletSerializer, WalletNameUpdateSerializer, PrivateKeySerializer
+from .serializers import *
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from . import forms
@@ -48,12 +48,18 @@ class WalletAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        platform = request.query_params.get('platform')
+        platform = request.query_params.get('platform', 'SOL')
         if not platform:
             wallets = Wallet.objects.filter(user=request.user)
         else:
             wallets = Wallet.objects.filter(user=request.user, platform = platform)
-        serializer = WalletSerializer(wallets, many=True)
+        serializer = WalletListSerializer(wallets, many=True)
+        wallet_handler = WalletHandler(platform)
+        balance_dict = wallet_handler.multi_get_balances([s['address'] for s in serializer.data])
+        for s in serializer.data:
+            data = balance_dict.get(s['address'], dict())
+            s['value'] = data.get('value', 0)
+            s['tokens'] = data.get('tokens', [])
         return Response(dict(data=serializer.data))
 
     def post(self, request, *args, **kwargs):

@@ -40,6 +40,25 @@ class WalletSerializer(serializers.ModelSerializer):
         ret['value'] = data.get('value', 0)
         ret['tokens'] = data.get('tokens', [])
         return ret
+    
+
+class WalletListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = '__all__'
+        read_only_fields = ('id', 'user')
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super(WalletSerializer, self).create(validated_data)
+    
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret.pop('public_key', None)
+        ret.pop('private_key', None)
+        
+        return ret
 
 
 class WalletNameUpdateSerializer(serializers.ModelSerializer):

@@ -6,6 +6,7 @@ import requests
 from eth_account import Account
 
 from covalent import CovalentClient
+from concurrent import futures
 
 
 class WalletHandler():
@@ -27,6 +28,19 @@ class WalletHandler():
             secretKey = account.key.hex()
             publicKey = account._key_obj.public_key.to_hex()
         return secretKey, publicKey
+    
+    def multi_get_balances(self, address_list):
+        with futures.ThreadPoolExecutor() as executor:
+            future_to_address = {executor.submit(self.get_balances, address): address for address in address_list}
+            results = dict()
+            for future in futures.as_completed(future_to_address):
+                address = future_to_address[future]
+                try:
+                    data = future.result()
+                    results[address] = data
+                except Exception as e:
+                    print(f"Error fetching balances for address '{address}': {str(e)}")
+        return results
     
     def get_balances(self, address):
         cache_key = f"satoshi:balances:{address}"
