@@ -50,7 +50,7 @@ class WalletHandler():
             return cached_data
         
         c = CovalentClient(os.getenv('CQT_KEY'))
-        network_name = CHAIN_DICT.get(self.platform)
+        network_name = CHAIN_DICT.get(self.platform, dict()).get('cqt')
         if network_name:
             b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
             if b.error:
@@ -71,7 +71,7 @@ class WalletHandler():
                         logoUrl = item.logo_url,
                     ))
                     value += item.quote
-                json_data = dict(address=address, value=value, tokens=tokens)      
+                json_data = dict(address=address, value=value, tokens=tokens)
         else:
             json_data = dict(address=address, value=0, tokens=[])
             
