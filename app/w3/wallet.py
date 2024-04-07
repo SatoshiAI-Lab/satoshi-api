@@ -56,6 +56,8 @@ class WalletHandler():
             if b.error:
                 json_data = dict(address=address, value=0, tokens=[])
             else:
+                chain_id = b.data.chain_id
+                chain_name = b.data.chain_name
                 items = b.data.items
                 tokens = []
                 value = 0
@@ -69,6 +71,8 @@ class WalletHandler():
                         priceUsd = item.quote_rate,
                         valueUsd = item.quote,
                         logoUrl = item.logo_url,
+                        chain_id = chain_id,
+                        chain_name = chain_name,
                     ))
                     value += item.quote
                 json_data = dict(address=address, value=value, tokens=tokens)
