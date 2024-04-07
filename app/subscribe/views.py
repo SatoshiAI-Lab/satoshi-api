@@ -29,7 +29,7 @@ class UserSubscriptionCreate(APIView):
         if not subscription.exists():
             serializer.save(user=request.user)
         else:
-            old_content = subscription.first()['content']
+            old_content = subscription.first().content
             subscription.update(**request.data)
         
         if message_type != 3:
