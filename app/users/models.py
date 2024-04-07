@@ -1,3 +1,5 @@
+import json
+from typing import Iterable
 import uuid
 from eth_utils import keccak
 
@@ -6,6 +8,7 @@ from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
 from users.managers import UserManager
 from rest_framework import serializers
+from utils.constants import *
 
 from django_cryptography.fields import encrypt
 
@@ -33,6 +36,11 @@ class User(AbstractUser):
         return self.email
 
     objects = UserManager()
+
+    def save(self, *args, **kwargs):
+        if not self.ids:
+            self.ids = json.dumps(DEFAULT_IDS)
+        return super().save(*args, **kwargs)
 
 
 class Wallet(models.Model):

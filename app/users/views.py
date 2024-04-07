@@ -15,6 +15,7 @@ from eth_keys import keys
 from nacl.signing import SigningKey
 import base58
 import json
+import re
 
 from w3.wallet import WalletHandler
 
@@ -68,7 +69,7 @@ class WalletAPIView(APIView):
         wallet_handler = WalletHandler(data['platform'])
         data['private_key'], data['public_key'] = wallet_handler.create_wallet()
         if not data['private_key']:
-            return Response(dict(data={'error': 'Create the private key failed.'}))
+            return Response(dict(data={'error': 'Create the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
 
         serializer = WalletSerializer(data=data, context={'request': request})
         
@@ -85,6 +86,13 @@ class ImportPrivateKeyView(APIView):
         data = request.data.copy()
         private_key = data['private_key']
         platform = data.get('platform', 'SOL')
+
+        if len(private_key) != 64:
+            return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+
+        pattern = re.compile(r"^[0-9a-fA-F]+$")
+        if not re.match(pattern, private_key):
+            return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
 
         if platform == 'EVM':
             private_key_hex = "0x" + private_key_hex if not private_key.startswith("0x") else private_key

@@ -7,6 +7,7 @@ from eth_account import Account
 
 from covalent import CovalentClient
 from concurrent import futures
+from utils.constants import *
 
 
 class WalletHandler():
@@ -49,8 +50,8 @@ class WalletHandler():
             return cached_data
         
         c = CovalentClient(os.getenv('CQT_KEY'))
-        if self.platform == 'SOL':
-            network_name = 'solana-mainnet'
+        network_name = CHAIN_DICT.get(self.platform)
+        if network_name:
             b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
             if b.error:
                 json_data = dict(address=address, value=0, tokens=[])
