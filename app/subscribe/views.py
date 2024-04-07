@@ -40,8 +40,8 @@ class UserSubscriptionCreate(APIView):
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
         
-        old_addresses_set = set([c['address'] for c in old_content])
-        new_addresses_set = set([c['address'] for c in new_content])
+        old_addresses_set = set([c['address'] for c in old_content if c['chain'] == 'SOL'])
+        new_addresses_set = set([c['address'] for c in new_content if c['chain'] == 'SOL'])
         add_addresses_set = new_addresses_set - old_addresses_set
         del_addresses_set = old_addresses_set - new_addresses_set
 

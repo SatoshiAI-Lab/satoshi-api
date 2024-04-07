@@ -30,6 +30,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room.members.all()
         ):
             raise PermissionDenied("You are not allowed to access this chat room.")
+        
+        self.language = self.scope['url_route']['kwargs'].get('lang', 'en')
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
@@ -65,6 +67,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if json_data.get('type') == 'ping':
             self.last_ping_time = datetime.now()
             await self.send(json.dumps({'type': 'pong'}))
+            return
+        
+        if json_data.get('type') == 'lang' and json_data.get('data', '') in ['en', 'zh']:
+            self.language = json_data['data']
+            await self.send(json.dumps({'type': 'lang', 'data': self.language}))
             return
 
         self.user_id = self.scope["user"].id
@@ -102,11 +109,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if not subscriptions:
                 await asyncio.sleep(5)
                 continue
-            subscriptions_dict = {MESSAGE_TYPE_DICT[subscription.message_type]: subscription.content for subscription in subscriptions}
+
+            subscriptions_dict = {}
+            for subscription in subscriptions:
+                if subscription.message_type == 3:
+                    content = {c['address']:c['name'] for c in subscription.content}
+                else:
+                    content = subscription.content
+                subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
 
             async with aiohttp.ClientSession() as session:
                 url = f"{os.getenv('SUB_API')}/message_post"
-                response_text = await self.fetch(session, url, dict(user_id=user_id, language='en', content=subscriptions_dict))
+                response_text = await self.fetch(session, url, dict(user_id=user_id, language=self.language, content=subscriptions_dict))
 
             try:
                 data = json.loads(response_text).get('data', [])
