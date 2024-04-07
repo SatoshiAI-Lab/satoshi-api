@@ -27,10 +27,11 @@ class UserSubscriptionCreate(APIView):
         new_content = request.data['content']
         message_type = request.data['message_type']
 
-        for c in new_content:
-            if c.get('name'):
-                continue
-            c['name'] = c['address'][-4:]
+        if message_type == 3:
+            for c in new_content:
+                if c.get('name'):
+                    continue
+                c['name'] = c['address'][-4:]
 
         try:
             subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
