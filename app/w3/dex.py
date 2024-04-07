@@ -1,5 +1,6 @@
 from app.utils.fetch import MultiFetch
 import os
+import json
 
 
 class DexTools():
@@ -14,8 +15,17 @@ class DexTools():
         urls = [
             f'{cls.domain}/token/{chain}/{address}',
             f'{cls.domain}/token/{chain}/{address}/info',
-            f'{cls.domain}/pool/{chain}/{address}/price',
-            f'{cls.domain}/pool/{chain}/{address}/liquidity',
+            f'{cls.domain}/token/{chain}/{address}/pools?sort=creationBlock&order=asc&from=0&to=9999999999'
         ]
         res = MultiFetch.fetch_multiple_urls(cls.headers, urls)
-        return res
+
+        pools_data = json.loads(res[urls[2]]).get('data', {}).get('results', [])
+
+        pools_price_urls = []
+        pools_liquidity_urls = []
+        for p in pools_data:
+            pools_price_urls.append(f"{cls.domain}/pool/{chain}/{p['address']}/price")
+            pools_liquidity_urls.append(f"{cls.domain}/pool/{chain}/{p['address']}/liquidity")
+
+        pool_res = MultiFetch.fetch_multiple_urls(cls.headers, pools_price_urls + pools_liquidity_urls)
+        return pool_res

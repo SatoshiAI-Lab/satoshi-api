@@ -87,17 +87,20 @@ class ImportPrivateKeyView(APIView):
         private_key = data['private_key']
         platform = data.get('platform', 'SOL')
 
-        if len(private_key) != 64:
-            return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
-
-        pattern = re.compile(r"^[0-9a-fA-F]+$")
-        if not re.match(pattern, private_key):
-            return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
-
         if platform == 'EVM':
+            if len(private_key) != 64:
+                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+
+            pattern = re.compile(r"^[0-9a-fA-F]+$")
+            if not re.match(pattern, private_key):
+                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+            
             private_key_hex = "0x" + private_key_hex if not private_key.startswith("0x") else private_key
             data['public_key'] = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
         elif platform == 'SOL':
+            if len(private_key) != 88:
+                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+            
             private_key_bytes = base58.b58decode(private_key)
             signing_key = SigningKey(seed=private_key_bytes[:32])
             public_key_bytes = signing_key.verify_key.encode()
