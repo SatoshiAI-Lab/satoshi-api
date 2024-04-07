@@ -45,17 +45,27 @@ DEFAULT_IDS = [
 CHAIN_DICT = {
     "SOL": {
         'cqt': 'solana-mainnet',
+        'gecko': 'solana',
+        'dex_tools': '',
     },
     "ETH": {
         'cqt': 'eth-mainnet',
+        'gecko': 'eth',
+        'dex_tools': 'ether',
     },
     "BSC": {
         'cqt': 'bsc-mainnet',
+        'gecko': 'bsc',
+        'dex_tools': 'bsc',
     },
     "OP": {
         'cqt': 'optimism-mainnet',
+        'gecko': 'optimism',
+        'dex_tools': '',
     },
     "ARB": {
         'cqt': 'arbitrum-mainnet',
+        'gecko': 'arbitrum',
+        'dex_tools': 'arbitrum',
     }
 }

@@ -13,6 +13,8 @@ import os
 from urllib.parse import urljoin
 from users import models as user_models
 from users.permissions import OptionalAuthentication
+from utils.constants import *
+from w3.dex import GeckoAPI, DexTools
 
 
 class CoinSearchView(APIView):
@@ -98,6 +100,17 @@ class CoinInfoView(APIView):
         address = request.query_params['address']
         chain = request.query_params.get('chain', 'SOL')
 
-        
-
-        return Response(dict(data=dict()), status=status.HTTP_200_OK)
+        data = dict()
+        chain_gecko = CHAIN_DICT.get(chain, {}).get('gecko')
+        chain_dex_tools = CHAIN_DICT.get(chain, {}).get('dex_tools')
+        if chain_gecko:
+            gecko_data = GeckoAPI.token_info(chain_gecko, address)
+            data = dict(data, **gecko_data)
+        else:
+            return Response(dict(data=data), status=status.HTTP_200_OK)
+        if chain_dex_tools:
+            dex_tools_data = DexTools.token_info(chain_dex_tools, address)
+            data['holders'] = dex_tools_data.get('holders')
+        else:
+            data['holders'] = None
+        return Response(dict(data=data), status=status.HTTP_200_OK)
