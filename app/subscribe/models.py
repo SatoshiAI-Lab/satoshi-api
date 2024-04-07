@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 from django.utils.timezone import now
 from django.core.exceptions import ValidationError
+from utils.constants import *
 
 
 class UserSubscription(models.Model):
@@ -19,15 +20,25 @@ class UserSubscription(models.Model):
     def clean(self):
         if self.message_type < 0 or self.message_type > 4:
             raise ValidationError({'content': 'Must between 0 and 4.'})
-        if self.message_type == 0:
-            if not isinstance(self.content, dict) or not 'switch' in self.content:
+        if self.message_type == 0: # news
+            if not isinstance(self.content, dict) or not 'switch' in self.content or self.content['switch'] not in ['on', 'off']:
                 raise ValidationError({'content': 'Must be a dictionary containing switch.'})
-        elif self.message_type == 2:
-            if not (isinstance(self.content, list) and all(isinstance(item, int) for item in self.content)):
+        elif self.message_type == 2: # announcement
+            if not (isinstance(self.content, list) and all(isinstance(item, int) and item > 0 for item in self.content)):
                 raise ValidationError({'content': 'Must be a list of integers.'})
-        elif self.message_type in [1,3,4]:
-            if not (isinstance(self.content, list) and all(isinstance(item, str) for item in self.content)):
+            if len(self.content) != len(set(self.content)):
+                raise ValidationError({'content': 'Elements are repeated.'})
+        elif self.message_type == 3: # trade
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 40 and len(item.get('name', '')) > 0 and item.get('chain', '') in CHAIN_DICT for item in self.content)):
+                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain name, address, and chain.'})
+            addresses = [c['address'] for c in self.content]
+            if len(addresses) != len(set(addresses)):
+                raise ValidationError({'content': 'Address elements are repeated.'})
+        elif self.message_type in [1,4]: # twitter/pool
+            if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
                 raise ValidationError({'content': 'Must be a list of strings.'})
+            if len(self.content) != len(set(self.content)):
+                raise ValidationError({'content': 'Elements are repeated.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()

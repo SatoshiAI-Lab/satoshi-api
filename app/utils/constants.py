@@ -6,3 +6,10 @@ MESSAGE_TYPE_DICT = {
     3: "trade",
     4: "pool"
 }
+
+CHAIN_DICT = {
+    "SOL": {},
+    "ETH": {},
+    "BSC": {},
+    "OP": {},
+}

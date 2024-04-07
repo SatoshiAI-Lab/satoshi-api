@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.db.models import F, Q
+from django.core.exceptions import ValidationError
 
 from .models import UserSubscription, TwitterUser, Exchange, TradeAddress
 from .serializers import UserSubscriptionSerializer
@@ -25,18 +26,22 @@ class UserSubscriptionCreate(APIView):
         old_content = []
         new_content = request.data['content']
         message_type = request.data['message_type']
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
-        if not subscription.exists():
-            serializer.save(user=request.user)
-        else:
-            old_content = subscription.first().content
-            subscription.update(**request.data)
+
+        try:
+            subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
+            if not subscription.exists():
+                serializer.save(user=request.user)
+            else:
+                old_content = subscription.first().content
+                subscription.update(**request.data)
+        except ValidationError as e:
+            return Response(dict(data=e.messages), status=status.HTTP_400_BAD_REQUEST)
         
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
         
-        old_addresses_set = set(old_content)
-        new_addresses_set = set(new_content)
+        old_addresses_set = set([c['address'] for c in old_content])
+        new_addresses_set = set([c['address'] for c in new_content])
         add_addresses_set = new_addresses_set - old_addresses_set
         del_addresses_set = old_addresses_set - new_addresses_set
 
