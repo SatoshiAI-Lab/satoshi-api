@@ -14,10 +14,9 @@ class WalletHandler():
         self.domain = os.getenv('WEB3_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
 
-    @classmethod
-    def create_wallet(cls):
-        if cls.platform == 'SOL':
-            url = f"{cls.domain}/account/keyPair/new"
+    def create_wallet(self):
+        if self.platform == 'SOL':
+            url = f"{self.domain}/account/keyPair/new"
             response = requests.request("GET", url)
             if response.status_code != 200:
                 return 
@@ -29,15 +28,14 @@ class WalletHandler():
             publicKey = account._key_obj.public_key.to_hex()
         return secretKey, publicKey
     
-    @classmethod
-    def get_balances(cls, address):
+    def get_balances(self, address):
         cache_key = f"satoshi:balances:{address}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
         
         c = CovalentClient(os.getenv('CQT_KEY'))
-        if cls.platform == 'SOL':
+        if self.platform == 'SOL':
             network_name = 'solana-mainnet'
             b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
             if b.error:
@@ -65,10 +63,9 @@ class WalletHandler():
         cache.set(cache_key, json_data, timeout=10)
         return json_data
     
-    @classmethod
-    def token_transaction(cls, private_key, input_token, output_token, amount, slippageBps):
-        if cls.platform == 'SOL':
-            url = f"{cls.domain}/swap"
+    def token_transaction(self, private_key, input_token, output_token, amount, slippageBps):
+        if self.platform == 'SOL':
+            url = f"{self.domain}/swap"
 
             payload = json.dumps(dict(
                 secretKey = private_key,

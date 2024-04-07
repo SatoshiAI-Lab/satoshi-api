@@ -85,3 +85,19 @@ class CoinListView(APIView):
         token_data = serializers.CoinListSerializer(t_models, many=True).data
 
         return Response(dict(data=dict(list=token_data)), status=status.HTTP_200_OK)
+    
+
+class CoinInfoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_page(5 * 60))
+    def get(self, request):
+        form = forms.CoinInfoForms(request.query_params)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+        address = request.query_params['address']
+        chain = request.query_params.get('chain', 'SOL')
+
+        
+
+        return Response(dict(data=dict()), status=status.HTTP_200_OK)

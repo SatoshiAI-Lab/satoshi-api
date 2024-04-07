@@ -32,3 +32,8 @@ class CoinListForms(ListBaseForm):
                 if not i['type'] or int(i['type']) < 1:
                     raise forms.ValidationError('type: wrong format')
         return ids
+    
+
+class CoinInfoForms(forms.Form):
+    address = forms.CharField(required=True, min_length=42, max_length=44)
+    chain = forms.CharField(required=False, min_length=1)

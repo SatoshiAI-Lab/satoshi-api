@@ -35,7 +35,8 @@ class WalletSerializer(serializers.ModelSerializer):
         ret.pop('public_key', None)
         ret.pop('private_key', None)
         
-        data = WalletHandler(ret.get('platform', 'SOL')).get_balances(ret['address'])
+        wallet_handler = WalletHandler(ret.get('platform', 'SOL'))
+        data = wallet_handler.get_balances(ret['address'])
         ret['value'] = data.get('value', 0)
         ret['tokens'] = data.get('tokens', [])
         return ret
