@@ -59,8 +59,7 @@ class WalletAPIView(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data
         data['platform'] = data.get('platform', 'SOL')
-        wallet_handler = WalletHandler(data['platform'])
-        data['private_key'], data['public_key'] = wallet_handler.create_wallet()
+        data['private_key'], data['public_key'] = WalletHandler(data['platform']).create_wallet()
         if not data['private_key']:
             return Response(dict(data={'error': 'Create the private key failed.'}))
 
@@ -135,8 +134,7 @@ class WalletBalanceAPIView(APIView):
 
     def get(self, request, pk):
         platform = request.query_params.get('platform', 'SOL')
-        wallet_handler = WalletHandler(platform)
-        data = wallet_handler.get_balances(pk)
+        data = WalletHandler(platform).get_balances(pk)
         return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []))))
 
 
@@ -153,8 +151,7 @@ class WalletTransactionView(APIView):
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
-        wallet_handler = WalletHandler(platform)
-        hash_tx = wallet_handler.token_transaction(wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
+        hash_tx = WalletHandler(platform).token_transaction(wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
         if not hash_tx:
             return Response(dict(data={'error': 'Transaction failed.'}), status=status.HTTP_400_BAD_REQUEST)
         
