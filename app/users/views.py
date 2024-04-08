@@ -277,27 +277,27 @@ class WalletTransactionView(APIView):
             user=wallet.user,
         )
 
-        ind = 0
-        while True:
-            ind += 1
-            if ind > 2: # timeout
-                return Response(dict(data=dict(hash_tx=transaction_hash, status = 2)), status=status.HTTP_200_OK)
-                # log_obj.status = 2
-                # log_obj.save()
-                # return Response(dict(data={'error': 'Timeout, transaction failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = wallet_handler.check_hash(chain, [dict(trxHash=transaction_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
-            if not check_res:
-                return Response(dict(data={'error': 'Check transaction hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = check_res[0]
-            if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
-                log_obj.status = 1
-                log_obj.save()
-                break
-            elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
-                log_obj.status = 3
-                log_obj.save()
-                return Response(dict(data={'error': 'Hash error, transaction failed.'}), status=status.HTTP_400_BAD_REQUEST) 
-            time.sleep(6)
+        # ind = 0
+        # while True:
+        #     ind += 1
+        #     if ind > 2: # timeout
+        #         return Response(dict(data=dict(hash_tx=transaction_hash, status = 2)), status=status.HTTP_200_OK)
+        #         # log_obj.status = 2
+        #         # log_obj.save()
+        #         # return Response(dict(data={'error': 'Timeout, transaction failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = wallet_handler.check_hash(chain, [dict(trxHash=transaction_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
+        #     if not check_res:
+        #         return Response(dict(data={'error': 'Check transaction hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = check_res[0]
+        #     if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
+        #         log_obj.status = 1
+        #         log_obj.save()
+        #         break
+        #     elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
+        #         log_obj.status = 3
+        #         log_obj.save()
+        #         return Response(dict(data={'error': 'Hash error, transaction failed.'}), status=status.HTTP_400_BAD_REQUEST) 
+        #     time.sleep(6)
 
         return Response(dict(data=dict(hash_tx=transaction_hash, status = log_obj.status)), status=status.HTTP_200_OK)
     
@@ -332,27 +332,27 @@ class CreateTokenView(APIView):
             user=wallet.user,
         )
         
-        ind = 0
-        while True:
-            ind += 1
-            if ind > 2: # timeout
-                return Response(dict(data=dict(hash_tx=created_hash, status = 2)), status=status.HTTP_200_OK)
-                # log_obj.status = 2
-                # log_obj.save()
-                # return Response(dict(data={'error': 'Timeout, create token failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
-            if not check_res:
-                return Response(dict(data={'error': 'Check create hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = check_res[0]
-            if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
-                log_obj.status = 1
-                log_obj.save()
-                break
-            elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
-                log_obj.status = 3
-                log_obj.save()
-                return Response(dict(data={'error': 'Hash error, create token failed.'}), status=status.HTTP_400_BAD_REQUEST) 
-            time.sleep(6)
+        # ind = 0
+        # while True:
+        #     ind += 1
+        #     if ind > 2: # timeout
+        #         return Response(dict(data=dict(hash_tx=created_hash, status = 2)), status=status.HTTP_200_OK)
+        #         # log_obj.status = 2
+        #         # log_obj.save()
+        #         # return Response(dict(data={'error': 'Timeout, create token failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
+        #     if not check_res:
+        #         return Response(dict(data={'error': 'Check create hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = check_res[0]
+        #     if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
+        #         log_obj.status = 1
+        #         log_obj.save()
+        #         break
+        #     elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
+        #         log_obj.status = 3
+        #         log_obj.save()
+        #         return Response(dict(data={'error': 'Hash error, create token failed.'}), status=status.HTTP_400_BAD_REQUEST) 
+        #     time.sleep(6)
 
         return Response(dict(data=dict(hash_tx=created_hash, status = log_obj.status)), status=status.HTTP_200_OK)
 
@@ -397,28 +397,28 @@ class MintTokenView(APIView):
             user=wallet.user,
         )
         
-        ind = 0
-        while True:
-            ind += 1
-            if ind > 2: # timeout
-                return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = 2)), status=status.HTTP_200_OK)
-                # log_obj.status = 2
-                # log_obj.save()
-                # return Response(dict(data={'error': 'Timeout, mint token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = wallet_handler.check_hash(chain, [dict(trxHash=mint_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
-            if not check_res:
-                return Response(dict(data={'error': 'Check mint hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
-            check_res = check_res[0]
-            if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
-                log_obj.status = 1
-                log_obj.input_token = address
-                log_obj.save()
-                break
-            elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
-                log_obj.status = 3
-                log_obj.save()
-                return Response(dict(data={'error': 'Hash error, mint token error.'}), status=status.HTTP_400_BAD_REQUEST) 
-            time.sleep(6)
+        # ind = 0
+        # while True:
+        #     ind += 1
+        #     if ind > 2: # timeout
+        #         return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = 2)), status=status.HTTP_200_OK)
+        #         # log_obj.status = 2
+        #         # log_obj.save()
+        #         # return Response(dict(data={'error': 'Timeout, mint token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = wallet_handler.check_hash(chain, [dict(trxHash=mint_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
+        #     if not check_res:
+        #         return Response(dict(data={'error': 'Check mint hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+        #     check_res = check_res[0]
+        #     if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
+        #         log_obj.status = 1
+        #         log_obj.input_token = address
+        #         log_obj.save()
+        #         break
+        #     elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
+        #         log_obj.status = 3
+        #         log_obj.save()
+        #         return Response(dict(data={'error': 'Hash error, mint token error.'}), status=status.HTTP_400_BAD_REQUEST) 
+        #     time.sleep(6)
         
         return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = log_obj.status)), status=status.HTTP_200_OK)
 
