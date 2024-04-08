@@ -31,7 +31,7 @@ class Coin(models.Model):
                 chain.append(dict(
                     address=c.address, 
                     name = c.symbol, 
-                    logo = urljoin(os.getenv('IMAGE_DOMAIN'), c.logo) if c.logo else os.getenv('IMAGE_DOMAIN') + 'img/chain/base.png',
+                    logo = urljoin(os.getenv('IMAGE_DOMAIN'), c.logo) if c.logo else os.getenv('IMAGE_DOMAIN') + '/img/chain/base.png',
                 ))
         return chain
 
