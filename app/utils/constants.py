@@ -46,7 +46,7 @@ CHAIN_DICT = {
     "SOL": {
         'cqt': 'solana-mainnet',
         'gecko': 'solana',
-        'dex_tools': '',
+        'dex_tools': 'solana',
     },
     "ETH": {
         'cqt': 'eth-mainnet',
@@ -61,11 +61,16 @@ CHAIN_DICT = {
     "OP": {
         'cqt': 'optimism-mainnet',
         'gecko': 'optimism',
-        'dex_tools': '',
+        'dex_tools': 'optimism',
     },
     "ARB": {
         'cqt': 'arbitrum-mainnet',
         'gecko': 'arbitrum',
         'dex_tools': 'arbitrum',
+    },
+    "BASE": {
+        'cqt': 'base-mainnet',
+        'gecko': 'base',
+        'dex_tools': 'base',
     }
 }
