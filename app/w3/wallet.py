@@ -112,6 +112,7 @@ class WalletHandler():
         return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
+        hash_tx = None
         if chain == 'Solana':
             url = f"{self.domain}/swap"
 
@@ -131,29 +132,62 @@ class WalletHandler():
 
             data = json.loads(response.text)
             hash_tx = data.get('data', {}).get('trx_hash')
-        else:
-            hash_tx = None
         return hash_tx
     
     def check_hash(self, chain, data_list):
+        data = []
         if chain == 'Solana':
-            return [True]
-        else:
-            return [False]
+            url = f"{self.domain}/transaction/is_success"
+
+            payload = json.dumps(data_list)
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return data
+            data = json.loads(response.text).get('data', [])
+        return data
     
     def create_token(self, chain, private_key, name, symbol, desc, decimals):
+        hash_tx = None
         if chain == 'Solana':
-            hash_tx = None
-            token_address = None
-        else:
-            hash_tx = None
-            token_address = None
-        return hash_tx, token_address
+            url = f"{self.domain}/token/create"
+
+            payload = json.dumps(dict(
+                secretKey = private_key,
+                tokenName = name,
+                tokenSymbol = symbol,
+                tokenDescription = desc,
+                tokenDecimals = decimals,
+            ))
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return hash_tx
+            data = json.loads(response.text).get('data', dict())
+            hash_tx = data['create_trx_hash']
+        return hash_tx
     
     def mint_token(self, chain, private_key, create_hash, mint_amount):
+        hash_tx = None
         if chain == 'Solana':
-            hash_tx = None
-        else:
-            hash_tx = None
+            url = f"{self.domain}/token/mint"
+
+            payload = json.dumps(dict(
+                secretKey = private_key,
+                createTrxHash = create_hash,
+                tokenMintAmount = mint_amount,
+            ))
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return hash_tx
+            data = json.loads(response.text).get('data', dict())
+            hash_tx = data['mint_trx_hash']
         return hash_tx
         

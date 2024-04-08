@@ -42,4 +42,9 @@ class CreateTokenForms(forms.Form):
     symbol = forms.CharField(min_length=1, max_length=100) 
     decimals = forms.IntegerField(min_value=1,max_value=18) 
     desc = forms.CharField(min_length=1, max_length=100,required=False)
+
+
+class MintTokenForms(forms.Form):
+    chain = forms.CharField(min_length=1, max_length=30, required=False)
+    created_hash = forms.CharField(min_length=1, max_length=128)
     amount = forms.IntegerField(min_value=1)

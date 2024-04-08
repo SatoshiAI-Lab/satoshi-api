@@ -1,6 +1,8 @@
 import os
 from celery import Celery
 from celery.schedules import crontab
+import datetime
+
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
@@ -31,5 +33,10 @@ app.conf.update(
     CELERY_TASK_SERIALIZER="json",
     CELERY_RESULT_SERIALIZER="json",
     CELERYBEAT_SCHEDULE={
+        'withdraw-check-task': {
+            'task': 'users.tasks.check_solana_hash',
+            'schedule':  datetime.timedelta(seconds=60),
+            'args': ()
+        },
     }
 )
