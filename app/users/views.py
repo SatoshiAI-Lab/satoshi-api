@@ -224,7 +224,7 @@ class AccountTypeView(APIView):
         return Response(json.loads(response.content), status=response.status_code)
     
 
-class CheckHashAPIView(APIView):
+class HashStatusAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
