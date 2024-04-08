@@ -224,6 +224,29 @@ class AccountTypeView(APIView):
         return Response(json.loads(response.content), status=response.status_code)
     
 
+class CheckHashAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        chain = request.query_params.get('chain', DEFAULT_CHAIN)
+        if chain not in CHAIN_DICT:
+            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+        hash_tx = request.query_params.get('hash_tx')
+        
+        obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
+        status = obj.status
+        if status == 0:
+            wallet_handler = WalletHandler()
+            check_res = wallet_handler.check_hash(chain, [dict(trxHash=hash_tx, trxTimestamp=int(obj.added_at.timestamp()))])
+            if check_res:
+                check_res = check_res[0]
+                if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
+                    status = 1
+                elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
+                    status = 3
+        return Response(dict(data=dict(status=status)), status=status.HTTP_200_OK)
+    
+
 class WalletTransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -293,14 +316,14 @@ class CreateTokenView(APIView):
         wallet_handler = WalletHandler()
 
         # create token
-        created_hash = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], str(form_data['decimals']), form_data.get('desc', ''))
+        created_hash = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], form_data.get('desc', ''), str(form_data['decimals']))
         if not created_hash:
             return Response(dict(data={'error': 'No hash, create token failed.'}), status=status.HTTP_400_BAD_REQUEST)
         log_obj = WalletLog.objects.create(
             chain=chain,
             input_token=None,
             output_token=None,
-            amount=form_data['amount'],
+            amount=None,
             hash_tx=created_hash,
             type_id=1,
             status=0,
@@ -310,10 +333,11 @@ class CreateTokenView(APIView):
         ind = 0
         while True:
             ind += 1
-            if ind > 10: # timeout
-                log_obj.status = 2
-                log_obj.save()
-                return Response(dict(data={'error': 'Timeout, create token failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+            if ind > 2: # timeout
+                return Response(dict(data=dict(hash_tx=created_hash, status = 2)), status=status.HTTP_200_OK)
+                # log_obj.status = 2
+                # log_obj.save()
+                # return Response(dict(data={'error': 'Timeout, create token failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
             check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
             if not check_res:
                 return Response(dict(data={'error': 'Check create hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
@@ -328,7 +352,7 @@ class CreateTokenView(APIView):
                 return Response(dict(data={'error': 'Hash error, create token failed.'}), status=status.HTTP_400_BAD_REQUEST) 
             time.sleep(6)
 
-        return Response(dict(data=dict(hash_tx=created_hash)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=created_hash, status = log_obj.status)), status=status.HTTP_200_OK)
 
 
 class MintTokenView(APIView):
@@ -343,22 +367,23 @@ class MintTokenView(APIView):
         chain=form_data.get('chain', DEFAULT_CHAIN)
         created_hash = form_data['created_hash']
 
-        created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash)
+        created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
         if created_log.status != 1:
             return Response(dict(data={'error': 'Hash status error.'}), status=status.HTTP_400_BAD_REQUEST) 
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
         wallet_handler = WalletHandler()
+        address = wallet_handler.get_address_from_hash(chain, created_log.hash_tx)
 
         # mint token
-        mint_hash, token_address = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
+        mint_hash = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
         if not mint_hash:
             return Response(dict(data={'error': 'No hash, mint token failed.'}), status=status.HTTP_400_BAD_REQUEST)
         
         log_obj = WalletLog.objects.create(
             chain=chain,
-            input_token=token_address,
+            input_token=None,
             output_token=None,
             amount=form_data['amount'],
             hash_tx=mint_hash,
@@ -366,23 +391,22 @@ class MintTokenView(APIView):
             status=0,
             user=wallet.user,
         )
-
-        created_log.status = 4
-        created_log.save()
         
         ind = 0
         while True:
             ind += 1
-            if ind > 10: # timeout
-                log_obj.status = 2
-                log_obj.save()
-                return Response(dict(data={'error': 'Timeout, mint token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+            if ind > 2: # timeout
+                return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = 2)), status=status.HTTP_200_OK)
+                # log_obj.status = 2
+                # log_obj.save()
+                # return Response(dict(data={'error': 'Timeout, mint token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
             check_res = wallet_handler.check_hash(chain, [dict(trxHash=mint_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
             if not check_res:
                 return Response(dict(data={'error': 'Check mint hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
             check_res = check_res[0]
             if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
                 log_obj.status = 1
+                log_obj.input_token = address
                 log_obj.save()
                 break
             elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
@@ -391,5 +415,5 @@ class MintTokenView(APIView):
                 return Response(dict(data={'error': 'Hash error, mint token error.'}), status=status.HTTP_400_BAD_REQUEST) 
             time.sleep(6)
         
-        return Response(dict(data=dict(hash_tx=mint_hash)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = log_obj.status)), status=status.HTTP_200_OK)
 

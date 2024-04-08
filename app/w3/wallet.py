@@ -149,6 +149,21 @@ class WalletHandler():
             data = json.loads(response.text).get('data', [])
         return data
     
+    def get_address_from_hash(self, chain, hash_tx):
+        data = None
+        if chain == 'Solana':
+            url = f"{self.domain}/token/address?create_trx_hash={hash_tx}"
+
+            payload = {}
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("GET", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return data
+            data = json.loads(response.text).get('data', {}).get('token_address')
+        return data
+    
     def create_token(self, chain, private_key, name, symbol, desc, decimals):
         hash_tx = None
         if chain == 'Solana':
@@ -168,7 +183,7 @@ class WalletHandler():
             if response.status_code != 200:
                 return hash_tx
             data = json.loads(response.text).get('data', dict())
-            hash_tx = data['create_trx_hash']
+            hash_tx = data.get('create_trx_hash')
         return hash_tx
     
     def mint_token(self, chain, private_key, create_hash, mint_amount):
@@ -188,6 +203,6 @@ class WalletHandler():
             if response.status_code != 200:
                 return hash_tx
             data = json.loads(response.text).get('data', dict())
-            hash_tx = data['mint_trx_hash']
+            hash_tx = data.get('mint_trx_hash')
         return hash_tx
         

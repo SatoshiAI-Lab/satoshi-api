@@ -16,6 +16,8 @@ urlpatterns = [
     path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
 
     path('account/type/', AccountTypeView.as_view(), name='account-type'),
+    path('hash/check/', CheckHashAPIView.as_view(),  name='hash-check'),
     path('coin/select/', UserSelectView.as_view(),  name='coin-select'),
     path('coin/create/<str:pk>/', CreateTokenView.as_view(),  name='coin-create'),
+    path('coin/mint/<str:pk>/', MintTokenView.as_view(),  name='coin-mint'),
 ]
