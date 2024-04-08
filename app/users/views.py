@@ -19,6 +19,7 @@ import base58
 import json
 import re
 import os
+import requests
 
 from w3.wallet import WalletHandler
 
@@ -241,3 +242,13 @@ class UserSelect(APIView):
 
         user_obj.update(ids=json.dumps(existed_ids))
         return Response(dict(data=dict(ids=existed_ids)), status=status.HTTP_200_OK)
+    
+
+class AccountTypeView(APIView):
+    def get(self, request):
+        target_url = f"{os.getenv('WEB3_API')}/account/type"
+        params = request.GET.dict()
+        headers = dict(request.headers)
+
+        response = requests.get(target_url, params=params, headers=headers)
+        return Response(json.loads(response.content), status=response.status_code)

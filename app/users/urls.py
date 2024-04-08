@@ -16,4 +16,5 @@ urlpatterns = [
     path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
 
     path('coin/select/', UserSelect.as_view(),  name='coin-select'),
+    path('account/type/', AccountTypeView.as_view(), name='account-type'),
 ]
