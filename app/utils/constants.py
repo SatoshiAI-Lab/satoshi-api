@@ -42,33 +42,48 @@ DEFAULT_IDS = [
     }
 ]
 
+DEFAULT_PLATFORM = 'SOL'
+
+DEFAULT_CHAIN = 'Solana'
+
+PLATFORM_LIST = [
+    'EVM',
+    "SOL",
+]
+
 CHAIN_DICT = {
-    "SOL": {
+    "Solana": {
+        'platform': 'SOL',
         'cqt': 'solana-mainnet',
         'gecko': 'solana',
         'dex_tools': 'solana',
     },
-    "ETH": {
+    "Ethereum": {
+        'platform': 'EVM',
         'cqt': 'eth-mainnet',
         'gecko': 'eth',
         'dex_tools': 'ether',
     },
     "BSC": {
+        'platform': 'EVM',
         'cqt': 'bsc-mainnet',
         'gecko': 'bsc',
         'dex_tools': 'bsc',
     },
-    "OP": {
+    "Optimism": {
+        'platform': 'EVM',
         'cqt': 'optimism-mainnet',
         'gecko': 'optimism',
         'dex_tools': 'optimism',
     },
-    "ARB": {
+    "Arbitrum": {
+        'platform': 'EVM',
         'cqt': 'arbitrum-mainnet',
         'gecko': 'arbitrum',
         'dex_tools': 'arbitrum',
     },
-    "BASE": {
+    "Base": {
+        'platform': 'EVM',
         'cqt': 'base-mainnet',
         'gecko': 'base',
         'dex_tools': 'base',

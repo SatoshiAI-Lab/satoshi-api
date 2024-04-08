@@ -23,6 +23,11 @@ class UserSubscription(models.Model):
         if self.message_type == 0: # news
             if not isinstance(self.content, dict) or not 'switch' in self.content or self.content['switch'] not in ['on', 'off']:
                 raise ValidationError({'content': 'Must be a dictionary containing switch.'})
+        elif self.message_type == 1: # twitter
+            if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
+                raise ValidationError({'content': 'Must be a list of strings.'})
+            if len(self.content) != len(set(self.content)):
+                raise ValidationError({'content': 'Elements are repeated.'})
         elif self.message_type == 2: # announcement
             if not (isinstance(self.content, list) and all(isinstance(item, int) and item > 0 for item in self.content)):
                 raise ValidationError({'content': 'Must be a list of integers.'})
@@ -34,11 +39,12 @@ class UserSubscription(models.Model):
             addresses = [c['address'] for c in self.content]
             if len(addresses) != len(set(addresses)):
                 raise ValidationError({'content': 'Address elements are repeated.'})
-        elif self.message_type in [1,4]: # twitter/pool
-            if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
-                raise ValidationError({'content': 'Must be a list of strings.'})
-            if len(self.content) != len(set(self.content)):
-                raise ValidationError({'content': 'Elements are repeated.'})
+        elif self.message_type == 4: # pool
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in CHAIN_DICT for item in self.content)):
+                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain chain.'})
+            chains = [c['chain'] for c in self.content]
+            if len(chains) != len(set(chains)):
+                raise ValidationError({'content': 'Chain elements are repeated.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()

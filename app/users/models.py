@@ -72,7 +72,7 @@ class Wallet(models.Model):
             is_update = False
 
         if not self.platform:
-            self.platform = 'SOL'
+            self.platform = DEFAULT_PLATFORM
         
         if not self.address:
             if self.platform == 'EVM':
@@ -94,13 +94,8 @@ class Wallet(models.Model):
     
 
 class WalletLog(models.Model):
-    PLATFORM_CHOICES = [
-        ("EVM", "EVM"),
-        ("SOL", "SOL"),
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-    platform = models.CharField(max_length=10, choices=PLATFORM_CHOICES, blank=True, null=True)
+    chain = models.CharField(max_length=30, blank=True, null=True)
     input_token = models.CharField(max_length=128)
     output_token = models.CharField(max_length=128)
     amount = models.FloatField()
@@ -112,7 +107,7 @@ class WalletLog(models.Model):
 
     class Meta:
         db_table = 'users_wallet_log'
-        unique_together = (('hash_tx', 'platform'),)
+        unique_together = (('hash_tx', 'chain'),)
 
 # class UserSelection(models.Model):
 #     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)

@@ -6,6 +6,8 @@ from .serializers import *
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from . import forms
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -43,20 +45,30 @@ class MineView(APIView):
             id = request.user.id
             email = request.user.email
         return Response(dict(data={"id": id, "email": email}), status=status.HTTP_200_OK)
+    
+
+class ChainView(APIView):
+    # permission_classes = [IsAuthenticated]
+    
+    @method_decorator(cache_page(5 * 60))
+    def get(self, request, *args, **kwargs):
+        return Response(dict(data={"chains": list(CHAIN_DICT.keys()), "platforms": PLATFORM_LIST}), status=status.HTTP_200_OK)
 
 
 class WalletAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        platform = request.query_params.get('platform', 'SOL')
-        if not platform:
+        chain = request.query_params.get('chain', DEFAULT_CHAIN)
+        if not chain:
             wallets = Wallet.objects.filter(user=request.user)
         else:
-            wallets = Wallet.objects.filter(user=request.user, platform = platform)
+            if chain not in CHAIN_DICT:
+                return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+            wallets = Wallet.objects.filter(user=request.user, platform = CHAIN_DICT.get(chain, {}).get('platform'))
         serializer = WalletListSerializer(wallets, many=True)
-        wallet_handler = WalletHandler(platform)
-        balance_dict = wallet_handler.multi_get_balances([s['address'] for s in serializer.data])
+        wallet_handler = WalletHandler()
+        balance_dict = wallet_handler.multi_get_balances(chain, [s['address'] for s in serializer.data])
         for s in serializer.data:
             data = balance_dict.get(s['address'], dict())
             s['value'] = data.get('value', 0)
@@ -65,9 +77,12 @@ class WalletAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
-        data['platform'] = data.get('platform', 'SOL')
-        wallet_handler = WalletHandler(data['platform'])
-        data['private_key'], data['public_key'] = wallet_handler.create_wallet()
+        data['platform'] = data.get('platform', DEFAULT_PLATFORM)
+        if data['platform'] not in PLATFORM_LIST:
+            return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
+        
+        wallet_handler = WalletHandler()
+        data['private_key'], data['public_key'] = wallet_handler.create_wallet(data['platform'])
         if not data['private_key']:
             return Response(dict(data={'error': 'Create the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
 
@@ -85,7 +100,10 @@ class ImportPrivateKeyView(APIView):
     def post(self, request):
         data = request.data.copy()
         private_key = data['private_key']
-        platform = data.get('platform', 'SOL')
+        platform = data.get('platform', DEFAULT_PLATFORM)
+
+        if platform not in PLATFORM_LIST:
+            return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
 
         if platform == 'EVM':
             if len(private_key) != 64:
@@ -151,9 +169,11 @@ class WalletBalanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        platform = request.query_params.get('platform', 'SOL')
-        wallet_handler = WalletHandler(platform)
-        data = wallet_handler.get_balances(pk)
+        chain = request.query_params.get('chain', DEFAULT_CHAIN)
+        if chain not in CHAIN_DICT:
+            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+        wallet_handler = WalletHandler()
+        data = wallet_handler.get_balances(chain, pk)
         return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []))))
 
 
@@ -166,17 +186,17 @@ class WalletTransactionView(APIView):
         if not form.is_valid():
             return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         form_data = form.data
-        platform=form_data.get('platform', 'SOL')
+        chain=form_data.get('chain', DEFAULT_CHAIN)
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
-        wallet_handler = WalletHandler(platform)
-        hash_tx = wallet_handler.token_transaction(wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
+        wallet_handler = WalletHandler()
+        hash_tx = wallet_handler.token_transaction(chain, wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
         if not hash_tx:
             return Response(dict(data={'error': 'Transaction failed.'}), status=status.HTTP_400_BAD_REQUEST)
         
         WalletLog.objects.create(
-            platform=platform,
+            chain=chain,
             input_token=form_data['input_token'],
             output_token=form_data['output_token'],
             amount=form_data['amount'],

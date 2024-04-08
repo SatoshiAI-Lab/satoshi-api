@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import User, Wallet
 from w3.wallet import WalletHandler
+from utils.constants import *
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -35,10 +36,10 @@ class WalletSerializer(serializers.ModelSerializer):
         ret.pop('public_key', None)
         ret.pop('private_key', None)
         
-        wallet_handler = WalletHandler(ret.get('platform', 'SOL'))
-        data = wallet_handler.get_balances(ret['address'])
-        ret['value'] = data.get('value', 0)
-        ret['tokens'] = data.get('tokens', [])
+        # wallet_handler = WalletHandler()
+        # data = wallet_handler.get_balances(ret.get('chain', DEFAULT_CHAIN), ret['address'])
+        # ret['value'] = data.get('value', 0)
+        # ret['tokens'] = data.get('tokens', [])
         return ret
     
 
@@ -51,7 +52,7 @@ class WalletListSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         validated_data['user'] = user
-        return super(WalletSerializer, self).create(validated_data)
+        return super(WalletListSerializer, self).create(validated_data)
     
     def to_representation(self, instance):
         ret = super().to_representation(instance)

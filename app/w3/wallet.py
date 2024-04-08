@@ -11,13 +11,12 @@ from utils.constants import *
 
 
 class WalletHandler():
-    def __init__(self, platform) -> None:
-        self.platform = platform
+    def __init__(self) -> None:
         self.domain = os.getenv('WEB3_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
 
-    def create_wallet(self):
-        if self.platform == 'SOL':
+    def create_wallet(self, platform):
+        if platform == DEFAULT_PLATFORM:
             url = f"{self.domain}/account/keyPair/new"
             response = requests.request("GET", url)
             if response.status_code != 200:
@@ -30,9 +29,9 @@ class WalletHandler():
             publicKey = account._key_obj.public_key.to_hex()
         return secretKey, publicKey
     
-    def multi_get_balances(self, address_list):
+    def multi_get_balances(self, chain, address_list):
         with futures.ThreadPoolExecutor() as executor:
-            future_to_address = {executor.submit(self.get_balances, address): address for address in address_list}
+            future_to_address = {executor.submit(self.get_balances, chain, address): address for address in address_list}
             results = dict()
             for future in futures.as_completed(future_to_address):
                 address = future_to_address[future]
@@ -43,14 +42,14 @@ class WalletHandler():
                     print(f"Error fetching balances for address '{address}': {str(e)}")
         return results
     
-    def get_balances(self, address):
+    def get_balances(self, chain, address):
         cache_key = f"satoshi:balances:{address}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
         
         c = CovalentClient(os.getenv('CQT_KEY'))
-        network_name = CHAIN_DICT.get(self.platform, dict()).get('cqt')
+        network_name = CHAIN_DICT.get(chain, dict()).get('cqt')
         if network_name:
             b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
             if b.error:
@@ -82,7 +81,7 @@ class WalletHandler():
         cache.set(cache_key, json_data, timeout=10)
         return json_data
     
-    def token_transaction(self, private_key, input_token, output_token, amount, slippageBps):
+    def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
         if self.platform == 'SOL':
             url = f"{self.domain}/swap"
 

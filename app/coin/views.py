@@ -98,7 +98,9 @@ class CoinInfoView(APIView):
         if not form.is_valid():
             return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
-        chain = request.query_params.get('chain', 'SOL')
+        chain = request.query_params.get('chain', DEFAULT_CHAIN)
+        if chain not in CHAIN_DICT:
+            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
 
         data = dict()
         chain_gecko = CHAIN_DICT.get(chain, {}).get('gecko')
