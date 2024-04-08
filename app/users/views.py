@@ -279,10 +279,11 @@ class WalletTransactionView(APIView):
         ind = 0
         while True:
             ind += 1
-            if ind > 10: # timeout
-                log_obj.status = 2
-                log_obj.save()
-                return Response(dict(data={'error': 'Timeout, transaction failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+            if ind > 2: # timeout
+                return Response(dict(data=dict(hash_tx=transaction_hash, status = 2)), status=status.HTTP_200_OK)
+                # log_obj.status = 2
+                # log_obj.save()
+                # return Response(dict(data={'error': 'Timeout, transaction failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
             check_res = wallet_handler.check_hash(chain, [dict(trxHash=transaction_hash, trxTimestamp=int(log_obj.added_at.timestamp()))])
             if not check_res:
                 return Response(dict(data={'error': 'Check transaction hash failed.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
@@ -297,7 +298,7 @@ class WalletTransactionView(APIView):
                 return Response(dict(data={'error': 'Hash error, transaction failed.'}), status=status.HTTP_400_BAD_REQUEST) 
             time.sleep(6)
 
-        return Response(dict(data=dict(hash_tx=transaction_hash)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=transaction_hash, status = log_obj.status)), status=status.HTTP_200_OK)
     
 
 class CreateTokenView(APIView):
