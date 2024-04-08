@@ -146,7 +146,15 @@ class UserSubscriptionList(APIView):
 
         twitters = TwitterUser.objects.filter(is_deleted=0).values('twitter_id', 'name', 'logo')
         exchanges = Exchange.objects.filter(announcement_subable=1).values('id', 'slug', 'name')
-        pools = [dict(chain=c) for c in CHAIN_DICT]
+
+        pool_dict = {p['chain']:p for p in my_subscribed.get('pool', [])}
+        pool_data = [dict(
+                chain = chain, 
+                max = pool_dict.get(chain, {}).get('max'), 
+                min = pool_dict.get(chain, {}).get('min'), 
+                subscribed = True if chain in pool_dict else False,
+                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+            ) for chain in CHAIN_DICT]
 
         data = dict(
             news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "off"})),
@@ -155,11 +163,7 @@ class UserSubscriptionList(APIView):
                                                           'logo': f"{os.getenv('S3_DOMAIN')}/exchange/logo/{exchange['name']}.png",
                                                           'subscribed': exchange['id'] in my_subscribed.get('announcement', [])} for exchange in exchanges]),
             trade = dict(message_type=3, content=my_subscribed.get('trade', [])),
-            pool = dict(message_type=4, content=[{**pool, 
-                                                  'logo': f"{os.getenv('S3_DOMAIN')}/chains/logo/{pool['chain']}.png", 
-                                                  'max': my_subscribed.get('max'), 
-                                                  'min': my_subscribed.get('min'), 
-                                                  'subscribed': pool['chain'] in my_subscribed.get('pool', [])} for pool in pools]),
+            pool = dict(message_type=4, content=pool_data),
         )
         return Response(dict(data=data))
     
