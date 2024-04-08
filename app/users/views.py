@@ -18,6 +18,7 @@ from nacl.signing import SigningKey
 import base58
 import json
 import re
+import os
 
 from w3.wallet import WalletHandler
 
@@ -52,7 +53,7 @@ class ChainView(APIView):
     
     @method_decorator(cache_page(5 * 60))
     def get(self, request, *args, **kwargs):
-        return Response(dict(data={"chains": list(CHAIN_DICT.keys()), "platforms": PLATFORM_LIST}), status=status.HTTP_200_OK)
+        return Response(dict(data={"chains": [dict(name=c, logo=f"{os.getenv('S3_DOMAIN')}/chains/logo/{c}.png") for c in CHAIN_DICT], "platforms": PLATFORM_LIST}), status=status.HTTP_200_OK)
 
 
 class WalletAPIView(APIView):
