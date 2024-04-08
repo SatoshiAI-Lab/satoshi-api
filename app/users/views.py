@@ -234,17 +234,18 @@ class HashStatusAPIView(APIView):
         hash_tx = request.query_params.get('hash_tx')
         
         obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
-        status = obj.status
-        if status == 0:
+        hash_status = obj.status
+        created_at = obj.added_at
+        if hash_status == 0:
             wallet_handler = WalletHandler()
             check_res = wallet_handler.check_hash(chain, [dict(trxHash=hash_tx, trxTimestamp=int(obj.added_at.timestamp()))])
             if check_res:
                 check_res = check_res[0]
                 if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
-                    status = 1
+                    hash_status = 1
                 elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
-                    status = 3
-        return Response(dict(data=dict(status=status)), status=status.HTTP_200_OK)
+                    hash_status = 3
+        return Response(dict(data=dict(status=hash_status, created_at=created_at)), status=status.HTTP_200_OK)
     
 
 class WalletTransactionView(APIView):
