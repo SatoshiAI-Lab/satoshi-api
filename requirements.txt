@@ -23,6 +23,8 @@ django-prometheus==2.3.1
 django-cors-headers==4.3.1
 django-redis==5.4.0
 
+django-celery-beat==2.6.0
+
 black==23.12.1
 coverage==7.4.0
 

@@ -52,6 +52,20 @@ services:
     depends_on:
       - redis
 
+  celerybeat:
+    <<: *django
+    image: satoshi_celerybeat_image:latest
+    container_name: satoshi_celerybeat_container
+    env_file:
+      - ./.env
+    restart: always
+    ports: []
+    command: /start-celerybeat
+    networks:
+      - satoshi-link
+    depends_on:
+      - redis
+
   flower:
     image: mher/flower:latest
     container_name: satoshi_flower_container

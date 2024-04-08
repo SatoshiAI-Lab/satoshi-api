@@ -1,5 +1,6 @@
 import os
 from celery import Celery
+from celery.schedules import crontab
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
@@ -29,4 +30,6 @@ app.conf.update(
     CELERY_ACCEPT_CONTENT=["application/json"],
     CELERY_TASK_SERIALIZER="json",
     CELERY_RESULT_SERIALIZER="json",
+    CELERYBEAT_SCHEDULE={
+    }
 )

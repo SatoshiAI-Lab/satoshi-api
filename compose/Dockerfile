@@ -28,7 +28,8 @@ FROM builder AS deploy
 
 COPY ./app /app
 COPY ./scripts /scripts
-COPY ./compose/celery/start /start-celeryworker
+COPY ./compose/celery/start_worker /start-celeryworker
+COPY ./compose/celery/start_beat /start-celerybeat
 
 WORKDIR /app
 
@@ -41,7 +42,10 @@ RUN adduser --disabled-password --gecos '' djuser && \
     chmod -R +x /scripts && \
     chown -R djuser:djuser /start-celeryworker && \
     sed -i 's/\r$//g' /start-celeryworker && \
-    chmod +x /start-celeryworker 
+    chmod +x /start-celeryworker && \
+    chown -R djuser:djuser /start-celerybeat && \
+    sed -i 's/\r$//g' /start-celerybeat && \
+    chmod +x /start-celerybeat 
 
 ENV PATH="/scripts:/py/bin:$PATH"
 
