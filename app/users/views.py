@@ -20,6 +20,7 @@ import json
 import re
 import os
 import requests
+import time
 
 from w3.wallet import WalletHandler
 
@@ -211,7 +212,7 @@ class WalletTransactionView(APIView):
         return Response(dict(data=dict(hash_tx=hash_tx)), status=status.HTTP_200_OK)
 
 
-class UserSelect(APIView):
+class UserSelectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -252,3 +253,89 @@ class AccountTypeView(APIView):
 
         response = requests.get(target_url, params=params, headers=headers)
         return Response(json.loads(response.content), status=response.status_code)
+    
+
+class CreateTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, *args, **kwargs):
+        form = forms.CreateTokenForms(request.data)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+        form_data = form.data
+        chain=form_data.get('chain', DEFAULT_CHAIN)
+        
+        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+
+        wallet_handler = WalletHandler()
+
+        # create token
+        created_hash, token_address = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], str(form_data['decimals']), form_data.get('desc', ''))
+        if not created_hash:
+            return Response(dict(data={'error': 'Transaction failed.'}), status=status.HTTP_400_BAD_REQUEST)
+        
+        log_obj = WalletLog.objects.create(
+            chain=chain,
+            input_token=token_address,
+            output_token=None,
+            amount=form_data['amount'],
+            hash_tx=created_hash,
+            type_id=1,
+            status=0,
+            user=wallet.user,
+        )
+        
+        ind = 0
+        while True:
+            ind += 1
+            if ind > 15: # timeout
+                log_obj.status = 2
+                log_obj.save()
+                return Response(dict(data={'error': 'Create token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+            res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(log_obj.created_at.timestamp()))])[0]
+            if res.get('isPending') == False and res.get('isSuccess') == True: # succeed
+                log_obj.status = 1
+                log_obj.save()
+                break
+            elif res.get('isPending') == False and res.get('isSuccess') == True: # failed
+                log_obj.status = 3
+                log_obj.save()
+                return Response(dict(data={'error': 'Create token error.'}), status=status.HTTP_400_BAD_REQUEST) 
+            time.sleep(5)
+
+        # mint token
+        mint_hash, token_address = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
+        if not mint_hash:
+            return Response(dict(data={'error': 'Transaction failed.'}), status=status.HTTP_400_BAD_REQUEST)
+        
+        log_obj = WalletLog.objects.create(
+            chain=chain,
+            input_token=token_address,
+            output_token=None,
+            amount=form_data['amount'],
+            hash_tx=mint_hash,
+            type_id=2,
+            status=0,
+            user=wallet.user,
+        )
+        
+        ind = 0
+        while True:
+            ind += 1
+            if ind > 15: # timeout
+                log_obj.status = 2
+                log_obj.save()
+                return Response(dict(data={'error': 'Mint token error.'}), status=status.HTTP_408_REQUEST_TIMEOUT) 
+            res = wallet_handler.check_hash(chain, [dict(trxHash=mint_hash, trxTimestamp=int(log_obj.created_at.timestamp()))])[0]
+            if res.get('isPending') == False and res.get('isSuccess') == True: # succeed
+                log_obj.status = 1
+                log_obj.save()
+                break
+            elif res.get('isPending') == False and res.get('isSuccess') == True: # failed
+                log_obj.status = 3
+                log_obj.save()
+                return Response(dict(data={'error': 'Mint token error.'}), status=status.HTTP_400_BAD_REQUEST) 
+            time.sleep(5)
+        
+        return Response(dict(data=dict(hash_tx=mint_hash)), status=status.HTTP_200_OK)
+

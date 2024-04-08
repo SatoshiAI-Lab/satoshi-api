@@ -107,7 +107,7 @@ class WalletHandler():
         return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
-        if self.platform == 'SOL':
+        if chain == 'Solana':
             url = f"{self.domain}/swap"
 
             payload = json.dumps(dict(
@@ -129,3 +129,26 @@ class WalletHandler():
         else:
             hash_tx = None
         return hash_tx
+    
+    def check_hash(self, chain, data_list):
+        if chain == 'Solana':
+            return [True]
+        else:
+            return [False]
+    
+    def create_token(self, chain, private_key, name, symbol, desc, decimals):
+        if chain == 'Solana':
+            hash_tx = None
+            token_address = None
+        else:
+            hash_tx = None
+            token_address = None
+        return hash_tx, token_address
+    
+    def mint_token(self, chain, private_key, create_hash, mint_amount):
+        if chain == 'Solana':
+            hash_tx = None
+        else:
+            hash_tx = None
+        return hash_tx
+        

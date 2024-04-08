@@ -96,8 +96,8 @@ class Wallet(models.Model):
 class WalletLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
     chain = models.CharField(max_length=30, blank=True, null=True)
-    input_token = models.CharField(max_length=128)
-    output_token = models.CharField(max_length=128)
+    input_token = models.CharField(max_length=128, blank=True, null=True)
+    output_token = models.CharField(max_length=128, blank=True, null=True)
     amount = models.FloatField()
     hash_tx = models.CharField(max_length=128)
     type_id = models.SmallIntegerField(blank=True, null=True)

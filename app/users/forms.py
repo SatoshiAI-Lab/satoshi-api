@@ -34,3 +34,12 @@ class UserSelectForms(forms.Form):
             if not item['type'] or int(item['type']) < 1:
                 raise forms.ValidationError('type: wrong format')
         return ids
+    
+
+class CreateTokenForms(forms.Form):
+    chain = forms.CharField(min_length=1, max_length=30, required=False)
+    name = forms.CharField(min_length=1, max_length=100)    
+    symbol = forms.CharField(min_length=1, max_length=100) 
+    decimals = forms.IntegerField(min_value=1,max_value=18) 
+    desc = forms.CharField(min_length=1, max_length=100,required=False)
+    amount = forms.IntegerField(min_value=1)
