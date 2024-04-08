@@ -59,8 +59,8 @@ class WalletHandler():
             else:
                 chain_id = b.data.chain_id
                 chain_name = b.data.chain_name
-                # items = b.data.items
-                items = self.update_token_info(b.data.items)
+                items = b.data.items
+                # items = self.update_token_info(b.data.items)
                 tokens = []
                 value = 0
                 chain = dict(
