@@ -120,7 +120,7 @@ class ImportPrivateKeyView(APIView):
             private_key_hex = "0x" + private_key_hex if not private_key.startswith("0x") else private_key
             data['public_key'] = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
         elif platform == 'SOL':
-            if len(private_key) != 88:
+            if len(private_key) > 90 or len(private_key) < 85:
                 return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
             
             private_key_bytes = base58.b58decode(private_key)
