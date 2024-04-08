@@ -146,7 +146,6 @@ class UserSubscriptionList(APIView):
 
         twitters = TwitterUser.objects.filter(is_deleted=0).values('twitter_id', 'name', 'logo')
         exchanges = Exchange.objects.filter(announcement_subable=1).values('id', 'slug', 'name')
-        pools = [{"chain": "Ethereum"}, {"chain": "Solana"}]
         pools = [dict(chain=c) for c in CHAIN_DICT]
 
         data = dict(

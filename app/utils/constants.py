@@ -89,3 +89,5 @@ CHAIN_DICT = {
         'dex_tools': 'base',
     }
 }
+
+CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT}

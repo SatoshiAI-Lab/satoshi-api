@@ -72,6 +72,7 @@ class WalletHandler():
                         logoUrl = item.logo_url,
                         chain_id = chain_id,
                         chain_name = chain_name,
+                        chain_logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
                     ))
                     value += item.quote
                 json_data = dict(address=address, value=value, tokens=tokens)
