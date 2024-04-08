@@ -146,14 +146,15 @@ class UserSubscriptionList(APIView):
 
         twitters = TwitterUser.objects.filter(is_deleted=0).values('twitter_id', 'name', 'logo')
         exchanges = Exchange.objects.filter(announcement_subable=1).values('id', 'slug', 'name')
-        pools = [{"name": "Ethereum"}, {"name": "Solana"}]
+        pools = [{"chain": "Ethereum"}, {"chain": "Solana"}]
+        pools = [dict(chain=c) for c in CHAIN_DICT]
 
         data = dict(
             news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "off"})),
             twitter = dict(message_type=1, content=[{**twitter, 'subscribed': twitter['twitter_id'] in my_subscribed.get('twitter', [])} for twitter in twitters]),
             announcement = dict(message_type=2, content=[{**exchange, 'subscribed': exchange['id'] in my_subscribed.get('announcement', [])} for exchange in exchanges]),
             trade = dict(message_type=3, content=my_subscribed.get('trade', [])),
-            pool = dict(message_type=4, content=[{**pool, 'subscribed': pool['name'] in my_subscribed.get('pool', [])} for pool in pools]),
+            pool = dict(message_type=4, content=[{**pool, 'logo': '', 'max': my_subscribed.get('max'), 'min': my_subscribed.get('min'), 'subscribed': pool['chain'] in my_subscribed.get('pool', [])} for pool in pools]),
         )
         return Response(dict(data=data))
     
