@@ -236,7 +236,7 @@ class HashStatusAPIView(APIView):
         obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
         hash_status = obj.status
         created_at = obj.added_at
-        if hash_status == 0:
+        if hash_status in [0, 2]:
             wallet_handler = WalletHandler()
             check_res = wallet_handler.check_hash(chain, [dict(trxHash=hash_tx, trxTimestamp=int(obj.added_at.timestamp()))])
             if check_res:
@@ -370,13 +370,16 @@ class MintTokenView(APIView):
         created_hash = form_data['created_hash']
 
         created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
-        if created_log.status != 1:
+
+        wallet_handler = WalletHandler()
+        check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(created_log.added_at.timestamp()))])
+        if not (check_res and check_res[0].get('isPending') == False and check_res[0].get('isSuccess') == True): # succeed
             return Response(dict(data={'error': 'Hash status error.'}), status=status.HTTP_400_BAD_REQUEST) 
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
         wallet_handler = WalletHandler()
-        address = wallet_handler.get_address_from_hash(chain, created_log.hash_tx)
+        address = wallet_handler.get_address_from_hash(chain, created_hash)
 
         # mint token
         mint_hash = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
