@@ -9,6 +9,8 @@ from covalent import CovalentClient
 from concurrent import futures
 from utils.constants import *
 
+from utils.fetch import MultiFetch
+
 
 class WalletHandler():
     def __init__(self) -> None:
@@ -57,7 +59,8 @@ class WalletHandler():
             else:
                 chain_id = b.data.chain_id
                 chain_name = b.data.chain_name
-                items = b.data.items
+                # items = b.data.items
+                items = self.update_token_info(b.data.items)
                 tokens = []
                 value = 0
                 for item in items:
@@ -81,6 +84,27 @@ class WalletHandler():
             
         cache.set(cache_key, json_data, timeout=10)
         return json_data
+    
+    def update_token_info(self, items):
+        addresses = []
+        for item in items:
+            if item.contract_name and item.contract_ticker_symbol:
+                continue
+            addresses.append(item.contract_address)
+        
+        headers = {
+        'accept': 'application/json',
+        'x-api-key': os.getenv('SHYFT_KEY')
+        }
+        token_dict = MultiFetch.fetch_multiple_urls(headers, [f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={a}" for a in addresses])
+        for item in items:
+            res = token_dict.get(f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={item.contract_address}")
+            if not res:
+                continue
+            data = json.loads(res).get('result', {})
+            item.contract_name = data.get('name')
+            item.contract_ticker_symbol = data.get('symbol')
+        return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
         if self.platform == 'SOL':

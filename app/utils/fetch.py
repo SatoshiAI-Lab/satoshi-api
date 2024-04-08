@@ -1,13 +1,18 @@
 import requests
 from concurrent import futures
+import json
 
 
 class MultiFetch():
 
     @classmethod
     def fetch_url(cls, headers, url):
-        response = requests.get(url, headers=headers)
-        return response.text
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.text
+        except Exception as e:
+            return json.dumps(dict(data={}))
 
     @classmethod
     def fetch_multiple_urls(cls, headers, urls):
