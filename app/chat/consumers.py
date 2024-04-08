@@ -127,15 +127,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             except:
                 continue
 
-            # new_data = [news for news in data if news["id"] not in sent_data]   
-            # sent_data.update([news["id"] for news in new_data])
-            # if new_data:
-            #     await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
-            # await asyncio.sleep(3)
+            new_data = [news for news in data if news["id"] not in sent_data]   
+            sent_data.update([news["id"] for news in new_data])
+            if new_data:
+                await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
+            await asyncio.sleep(3)
 
-            if data:
-                await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
-            await asyncio.sleep(60)
+            # if data:
+            #     await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
+            # await asyncio.sleep(60)
 
     async def fetch(self, session, url, data):
         async with session.get(url, json=data) as response:
