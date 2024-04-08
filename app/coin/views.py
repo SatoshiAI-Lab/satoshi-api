@@ -92,7 +92,7 @@ class CoinListView(APIView):
 class CoinInfoView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(cache_page(5 * 60))
+    @method_decorator(cache_page(1 * 60))
     def get(self, request):
         form = forms.CoinInfoForms(request.query_params)
         if not form.is_valid():
