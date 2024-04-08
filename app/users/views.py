@@ -76,6 +76,7 @@ class WalletAPIView(APIView):
             data = balance_dict.get(s['address'], dict())
             s['value'] = data.get('value', 0)
             s['tokens'] = data.get('tokens', [])
+            s['chain'] = data.get('chain')
         return Response(dict(data=serializer.data))
 
     def post(self, request, *args, **kwargs):
@@ -177,7 +178,7 @@ class WalletBalanceAPIView(APIView):
             return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
         data = wallet_handler.get_balances(chain, pk)
-        return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []))))
+        return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []), chain=data.get('chain'))))
 
 
 class WalletTransactionView(APIView):

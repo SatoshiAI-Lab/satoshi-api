@@ -55,7 +55,7 @@ class WalletHandler():
         if network_name:
             b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
             if b.error:
-                json_data = dict(address=address, value=0, tokens=[])
+                json_data = dict(address=address, value=0, tokens=[], chain=None)
             else:
                 chain_id = b.data.chain_id
                 chain_name = b.data.chain_name
@@ -63,6 +63,11 @@ class WalletHandler():
                 items = self.update_token_info(b.data.items)
                 tokens = []
                 value = 0
+                chain = dict(
+                    id = chain_id,
+                    name = CQT_CHAIN_DICT[chain_name],
+                    logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
+                )
                 for item in items:
                     tokens.append(dict(
                         symbol = item.contract_ticker_symbol,
@@ -73,14 +78,14 @@ class WalletHandler():
                         priceUsd = item.quote_rate,
                         valueUsd = item.quote,
                         logoUrl = item.logo_url,
-                        chain_id = chain_id,
-                        chain_name = CQT_CHAIN_DICT[chain_name],
-                        chain_logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
+                        chain_id = chain['id'],
+                        chain_name = chain['name'],
+                        chain_logo = chain['logo'],
                     ))
                     value += item.quote
-                json_data = dict(address=address, value=value, tokens=tokens)
+                json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         else:
-            json_data = dict(address=address, value=0, tokens=[])
+            json_data = dict(address=address, value=0, tokens=[], chain=None)
             
         cache.set(cache_key, json_data, timeout=10)
         return json_data
