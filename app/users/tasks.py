@@ -17,7 +17,7 @@ logger = get_task_logger(__name__)
 @app.task()
 def check_solana_hash():
     ten_minutes_ago = timezone.now() - timedelta(minutes=3)
-    WalletLog.objects.filter(status = 0, added_at__lt=ten_minutes_ago).update(status = 2)
+    WalletLog.objects.filter(status = 0, added_at__lt=ten_minutes_ago).update(status = 3)
     objs = WalletLog.objects.filter(status = 0, added_at__gte=ten_minutes_ago)
     if not objs:
         return
