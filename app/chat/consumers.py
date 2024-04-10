@@ -118,7 +118,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     content = subscription.content
                 subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
 
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(120)) as session:
                 url = f"{os.getenv('SUB_API')}/message_post"
                 response_text = await self.fetch(session, url, dict(user_id=user_id, language=self.language, content=subscriptions_dict))
 
