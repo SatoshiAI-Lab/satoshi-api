@@ -49,45 +49,70 @@ class WalletHandler():
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
+        json_data = self.get_balances_from_cqt(chain, address)
+        if not json_data:
+            json_data = dict(address=address, value=0, tokens=[], chain=None)
+        
+        cache.set(cache_key, self.json_data, timeout=10)
+        return json_data
+    
+    def get_balances_from_helius(self, address):
+        url = os.getenv('HELIUS_DOMAIN')
+        payload = json.dumps({
+        "jsonrpc": "2.0",
+        "id": "my-id",
+        "method": "searchAssets",
+        "params": {
+            "ownerAddress": address,
+            "displayOptions": {
+            "showNativeBalance": True
+            },
+            "tokenType": "fungible"
+        }
+        })
+        headers = {
+        'Content-Type': 'application/json',
+        }
+        response = requests.request("POST", url, headers=headers, data=payload)
+        return json.loads(response.text)
+    
+    def get_balances_from_cqt(self, chain, address):
+        network_name = CHAIN_DICT.get(chain, dict()).get('cqt')
+        if not network_name:
+            return
         
         c = CovalentClient(os.getenv('CQT_KEY'))
-        network_name = CHAIN_DICT.get(chain, dict()).get('cqt')
-        if network_name:
-            b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
-            if b.error:
-                json_data = dict(address=address, value=0, tokens=[], chain=None)
-            else:
-                chain_id = b.data.chain_id
-                chain_name = b.data.chain_name
-                items = b.data.items
-                # items = self.update_token_info(b.data.items)
-                tokens = []
-                value = 0
-                chain = dict(
-                    id = chain_id,
-                    name = CQT_CHAIN_DICT[chain_name],
-                    logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
-                )
-                for item in items:
-                    tokens.append(dict(
-                        symbol = item.contract_ticker_symbol,
-                        name = item.contract_name,
-                        decimals = item.contract_decimals,
-                        amount = item.balance,
-                        address = item.contract_address,
-                        priceUsd = item.quote_rate,
-                        valueUsd = item.quote,
-                        logoUrl = item.logo_url,
-                        chain_id = chain['id'],
-                        chain_name = chain['name'],
-                        chain_logo = chain['logo'],
-                    ))
-                    value += item.quote
-                json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
+        if b.error:
+            return
         else:
-            json_data = dict(address=address, value=0, tokens=[], chain=None)
-            
-        cache.set(cache_key, json_data, timeout=10)
+            chain_id = b.data.chain_id
+            chain_name = b.data.chain_name
+            items = b.data.items
+            # items = self.update_token_info(b.data.items)
+            tokens = []
+            value = 0
+            chain = dict(
+                id = chain_id,
+                name = CQT_CHAIN_DICT[chain_name],
+                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
+            )
+            for item in items:
+                tokens.append(dict(
+                    symbol = item.contract_ticker_symbol,
+                    name = item.contract_name,
+                    decimals = item.contract_decimals,
+                    amount = item.balance,
+                    address = item.contract_address,
+                    priceUsd = item.quote_rate,
+                    valueUsd = item.quote,
+                    logoUrl = item.logo_url,
+                    chain_id = chain['id'],
+                    chain_name = chain['name'],
+                    chain_logo = chain['logo'],
+                ))
+                value += item.quote
+            json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
     def update_token_info(self, items):

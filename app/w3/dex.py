@@ -26,7 +26,7 @@ class DexTools():
         #     pools_price_urls.append(f"{cls.domain}/pool/{chain}/{p['address']}/price")
         #     pools_liquidity_urls.append(f"{cls.domain}/pool/{chain}/{p['address']}/liquidity")
         # pool_res = MultiFetch.fetch_multiple_urls(cls.headers, pools_price_urls + pools_liquidity_urls)
-        return json.loads(res[urls[0]])['data']
+        return json.loads(res[urls[0]]).get('data')
     
 
 class GeckoAPI():
@@ -43,6 +43,8 @@ class GeckoAPI():
             f'{cls.domain}/networks/{chain}/tokens/{address}/pools'
         ]
         res = MultiFetch.fetch_multiple_urls(cls.headers, urls)
+        if not res:
+            return dict()
         base = json.loads(res[urls[0]]).get('data', {}).get('attributes', {})
         info = json.loads(res[urls[1]]).get('data', {}).get('attributes', {})
         pools = json.loads(res[urls[2]]).get('data', {})
