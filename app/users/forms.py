@@ -42,6 +42,7 @@ class CreateTokenForms(forms.Form):
     symbol = forms.CharField(min_length=1, max_length=100) 
     decimals = forms.IntegerField(min_value=1,max_value=18) 
     desc = forms.CharField(min_length=1, max_length=100,required=False)
+    amount = forms.IntegerField(required=False)
 
 
 class MintTokenForms(forms.Form):

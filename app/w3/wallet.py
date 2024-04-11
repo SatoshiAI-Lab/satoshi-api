@@ -196,6 +196,35 @@ class WalletHandler():
 
             data = json.loads(response.text)
             hash_tx = data.get('data', {}).get('trx_hash')
+        else:
+            zero_address = '0x0000000000000000000000000000000000000000'
+            if output_token == zero_address and input_token == zero_address:
+                return
+            elif output_token == zero_address:
+                url = f"{self.domain}/evm/swap/buy"
+                token_address = input_token
+            elif input_token == zero_address:
+                url = f"{self.domain}/evm/swap/sell"
+                token_address = output_token
+            else:
+                return
+
+            payload = json.dumps(dict(
+                net = chain.lower(),
+                secretKey = private_key,
+                tokenAddress = token_address,
+                amount = amount,
+                slippageBps = slippageBps,
+            ))
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return 
+
+            data = json.loads(response.text)
+            hash_tx = data.get('data', {}).get('trx_hash')
         return hash_tx
     
     def check_hash(self, chain, data_list):
@@ -204,6 +233,17 @@ class WalletHandler():
             url = f"{self.domain}/transaction/is_success"
 
             payload = json.dumps(data_list)
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return data
+            data = json.loads(response.text).get('data', [])
+        else:
+            url = f"{self.domain}/evm/transaction/is_success"
+
+            payload = json.dumps(dict(net=chain.lower(), list=data_list))
             headers = {
             'Content-Type': 'application/json',
             }
@@ -228,8 +268,9 @@ class WalletHandler():
             data = json.loads(response.text).get('data', {}).get('token_address')
         return data
     
-    def create_token(self, chain, private_key, name, symbol, desc, decimals):
+    def create_token(self, chain, private_key, name, symbol, desc, decimals, amount):
         hash_tx = None
+        address = None
         if chain == 'Solana':
             url = f"{self.domain}/token/create"
 
@@ -245,10 +286,31 @@ class WalletHandler():
             }
             response = requests.request("POST", url, headers=headers, data=payload)
             if response.status_code != 200:
-                return hash_tx
+                return hash_tx, address
             data = json.loads(response.text).get('data', dict())
             hash_tx = data.get('create_trx_hash')
-        return hash_tx
+            address = self.get_address_from_hash(chain, hash_tx)
+        else:
+            url = f"{self.domain}/evm/token/new"
+
+            payload = json.dumps(dict(
+                net = chain.lower(),
+                secretKey = private_key,
+                tokenName = name,
+                tokenSymbol = symbol,
+                tokenDecimals = decimals,
+                mintAmount = amount,
+            ))
+            headers = {
+            'Content-Type': 'application/json',
+            }
+            response = requests.request("POST", url, headers=headers, data=payload)
+            if response.status_code != 200:
+                return hash_tx, address
+            data = json.loads(response.text).get('data', dict())
+            hash_tx = data.get('trx_hash')
+            address = data.get('token_address')
+        return hash_tx, address
     
     def mint_token(self, chain, private_key, create_hash, mint_amount):
         hash_tx = None
