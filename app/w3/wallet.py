@@ -11,6 +11,10 @@ from utils.constants import *
 
 from utils.fetch import MultiFetch
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class WalletHandler():
     def __init__(self) -> None:
@@ -41,7 +45,7 @@ class WalletHandler():
                     data = future.result()
                     results[address] = data
                 except Exception as e:
-                    print(f"Error fetching balances for address '{address}': {str(e)}")
+                    logger.error(f"Error fetching balances for address '{address}': {str(e)}")
         return results
     
     def get_balances(self, chain, address):

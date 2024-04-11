@@ -2,6 +2,10 @@ import requests
 from concurrent import futures
 import json
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class MultiFetch():
 
@@ -25,7 +29,7 @@ class MultiFetch():
                     data = future.result()
                     results[url] = data
                 except Exception as e:
-                    print(f"Error fetching URL '{url}': {str(e)}")
+                    logger.error(f"Error fetching URL '{url}': {str(e)}")
         return results
 
 

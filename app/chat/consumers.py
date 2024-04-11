@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 from subscribe.models import UserSubscription
 from utils.constants import *
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -19,10 +23,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = "chat_%s" % self.room_name
         try:
-            self.room = await database_sync_to_async(ChatRoom.objects.get)(
-                pk=self.room_name
-            )
-        except:
+            self.room = await database_sync_to_async(ChatRoom.objects.get)(pk=self.room_name)
+        except ChatRoom.DoesNotExist:
+            logger.error(f"Chat room with ID {self.room_name} does not exist.")
+            await self.close()
+            return
+        except Exception as e:
+            logger.error(f'Room init error: {e}')
             await self.close()
             return
 
@@ -54,7 +61,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         while True:
             await asyncio.sleep(10)
             if datetime.now() - self.last_ping_time > timeout:
-                print("No Ping received for 5 minutes, disconnecting...")
+                logger.warning("No Ping received for 5 minutes, disconnecting...")
                 await self.close()
                 break
 
@@ -105,38 +112,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         sent_data = set()
         while True:
-            subscriptions = await database_sync_to_async(list)(UserSubscription.objects.filter(user_id=user_id))
-            if not subscriptions:
-                await asyncio.sleep(5)
-                continue
-
-            subscriptions_dict = {}
-            for subscription in subscriptions:
-                if subscription.message_type == 3:
-                    content = {c['address']:c['name'] for c in subscription.content}
-                else:
-                    content = subscription.content
-                subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
-
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(120)) as session:
-                url = f"{os.getenv('SUB_API')}/message_post"
-                response_text = await self.fetch(session, url, dict(user_id=user_id, language=self.language, content=subscriptions_dict))
-
             try:
-                data = json.loads(response_text).get('data', [])
-            except:
-                continue
+                subscriptions = await database_sync_to_async(list)(UserSubscription.objects.filter(user_id=user_id))
+                if subscriptions:
+                    subscriptions_dict = {}
+                    for subscription in subscriptions:
+                        if subscription.message_type == 3:
+                            content = {c['address']:c['name'] for c in subscription.content}
+                        else:
+                            content = subscription.content
+                        subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
 
-            new_data = [news for news in data if news["id"] not in sent_data]   
-            sent_data.update([news["id"] for news in new_data])
-            if new_data:
-                await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
-            await asyncio.sleep(3)
+                    data = await self.get_event(user_id, subscriptions_dict)
 
-            # if data:
-            #     await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
-            #     await asyncio.sleep(10)
-            # await asyncio.sleep(30)
+                    new_data = [news for news in data if news["id"] not in sent_data]   
+                    sent_data.update([news["id"] for news in new_data])
+                    if new_data:
+                        await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
+
+                    # if data:
+                    #     await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
+                    #     await asyncio.sleep(10)
+                    # await asyncio.sleep(30)
+            except Exception as e:
+                logger.error(f'Get event error: {e}')
+            finally:
+                await asyncio.sleep(3)
+
+
+    async def get_event(self, user_id, subscriptions_dict):
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(120)) as session:
+            url = f"{os.getenv('SUB_API')}/message_post"
+            response_text = await self.fetch(session, url, dict(user_id=user_id, language=self.language, content=subscriptions_dict))
+
+        data = json.loads(response_text).get('data', [])
+        return data
 
     async def fetch(self, session, url, data):
         async with session.get(url, json=data) as response:
