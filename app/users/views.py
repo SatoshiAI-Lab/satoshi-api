@@ -86,7 +86,8 @@ class WalletAPIView(APIView):
             return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
         
         wallet_handler = WalletHandler()
-        data['private_key'], data['public_key'] = wallet_handler.create_wallet(data['platform'])
+        data['private_key'], data['public_key'], data['address'] = wallet_handler.create_wallet(data['platform'])
+        
         if not data['private_key']:
             return Response(dict(data={'error': 'Create the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
 
@@ -110,15 +111,17 @@ class ImportPrivateKeyView(APIView):
             return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
 
         if platform == 'EVM':
-            if len(private_key) != 64:
+            if len(private_key) < 64 or len(private_key) > 66:
                 return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
 
-            pattern = re.compile(r"^[0-9a-fA-F]+$")
-            if not re.match(pattern, private_key):
-                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+            # pattern = re.compile(r"^[0-9a-fA-F]+$")
+            # if not re.match(pattern, private_key):
+            #     return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
             
-            private_key_hex = "0x" + private_key_hex if not private_key.startswith("0x") else private_key
-            data['public_key'] = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
+            private_key_hex = "0x" + private_key if not private_key.startswith("0x") else private_key
+            public_key = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
+            data['public_key'] = str(public_key)
+            data['address'] = public_key.to_checksum_address()
         elif platform == 'SOL':
             if len(private_key) > 90 or len(private_key) < 85:
                 return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
@@ -127,6 +130,7 @@ class ImportPrivateKeyView(APIView):
             signing_key = SigningKey(seed=private_key_bytes[:32])
             public_key_bytes = signing_key.verify_key.encode()
             data['public_key'] = base58.b58encode(public_key_bytes).decode('utf-8')
+            data['address'] = data['public_key']
 
         serializer = PrivateKeySerializer(data=data)
         if serializer.is_valid():

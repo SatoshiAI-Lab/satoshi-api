@@ -1,7 +1,6 @@
 import json
-from typing import Iterable
 import uuid
-from eth_utils import keccak
+from eth_account import Account
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -74,13 +73,6 @@ class Wallet(models.Model):
         if not self.platform:
             self.platform = DEFAULT_PLATFORM
         
-        if not self.address:
-            if self.platform == 'EVM':
-                public_key_bytes = bytes.fromhex(self.public_key[2:])
-                self.address = "0x" + keccak(public_key_bytes[1:]).hex()[-40:]
-            elif self.platform == 'SOL':
-                self.address = self.public_key
-
         if not is_update:
             if Wallet.objects.filter(user=self.user, platform=self.platform, public_key=self.public_key).exists():
                 raise serializers.ValidationError({"public_key": "This public key already exists."})

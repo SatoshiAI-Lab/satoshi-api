@@ -29,11 +29,14 @@ class WalletHandler():
                 return 
             data = json.loads(response.text)['data']
             secretKey, publicKey = data.get('secretKey'), data.get('publicKey')
+            address = publicKey
         else:
             account = Account.create()
             secretKey = account.key.hex()
-            publicKey = account._key_obj.public_key.to_hex()
-        return secretKey, publicKey
+            publicKey = account._key_obj.public_key
+            address = publicKey.to_checksum_address()
+            publicKey = publicKey.to_hex()
+        return secretKey, publicKey, address
     
     def multi_get_balances(self, chain, address_list):
         with futures.ThreadPoolExecutor() as executor:
