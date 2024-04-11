@@ -220,7 +220,7 @@ class UserSelectView(APIView):
 
 class AccountTypeView(APIView):
     def get(self, request):
-        target_url = f"{os.getenv('WEB3_API')}/account/type"
+        target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
         params = request.GET.dict()
         headers = dict(request.headers)
 

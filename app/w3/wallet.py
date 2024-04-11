@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 
 class WalletHandler():
     def __init__(self) -> None:
-        self.domain = os.getenv('WEB3_API')
+        self.evm_domain = os.getenv('WEB3_EVM_API')
+        self.sol_domain = os.getenv('WEB3_SOL_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
 
     def create_wallet(self, platform):
         if platform == DEFAULT_PLATFORM:
-            url = f"{self.domain}/account/keyPair/new"
+            url = f"{self.sol_domain}/account/keyPair/new"
             response = requests.request("GET", url)
             if response.status_code != 200:
                 return 
@@ -181,7 +182,7 @@ class WalletHandler():
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
         hash_tx = None
         if chain == 'Solana':
-            url = f"{self.domain}/swap"
+            url = f"{self.sol_domain}/swap"
 
             payload = json.dumps(dict(
                 secretKey = private_key,
@@ -204,10 +205,10 @@ class WalletHandler():
             if output_token == zero_address and input_token == zero_address:
                 return
             elif output_token == zero_address:
-                url = f"{self.domain}/evm/swap/buy"
+                url = f"{self.evm_domain}/evm/swap/buy"
                 token_address = input_token
             elif input_token == zero_address:
-                url = f"{self.domain}/evm/swap/sell"
+                url = f"{self.evm_domain}/evm/swap/sell"
                 token_address = output_token
             else:
                 return
@@ -233,7 +234,7 @@ class WalletHandler():
     def check_hash(self, chain, data_list):
         data = []
         if chain == 'Solana':
-            url = f"{self.domain}/transaction/is_success"
+            url = f"{self.sol_domain}/transaction/is_success"
 
             payload = json.dumps(data_list)
             headers = {
@@ -244,7 +245,7 @@ class WalletHandler():
                 return data
             data = json.loads(response.text).get('data', [])
         else:
-            url = f"{self.domain}/evm/transaction/is_success"
+            url = f"{self.evm_domain}/evm/transaction/is_success"
 
             payload = json.dumps(dict(net=chain.lower(), list=data_list))
             headers = {
@@ -259,7 +260,7 @@ class WalletHandler():
     def get_address_from_hash(self, chain, hash_tx):
         data = None
         if chain == 'Solana':
-            url = f"{self.domain}/token/address?create_trx_hash={hash_tx}"
+            url = f"{self.sol_domain}/token/address?create_trx_hash={hash_tx}"
 
             payload = {}
             headers = {
@@ -275,7 +276,7 @@ class WalletHandler():
         hash_tx = None
         address = None
         if chain == 'Solana':
-            url = f"{self.domain}/token/create"
+            url = f"{self.sol_domain}/token/create"
 
             payload = json.dumps(dict(
                 secretKey = private_key,
@@ -294,7 +295,7 @@ class WalletHandler():
             hash_tx = data.get('create_trx_hash')
             address = self.get_address_from_hash(chain, hash_tx)
         else:
-            url = f"{self.domain}/evm/token/new"
+            url = f"{self.evm_domain}/evm/token/new"
 
             payload = json.dumps(dict(
                 net = chain.lower(),
@@ -318,7 +319,7 @@ class WalletHandler():
     def mint_token(self, chain, private_key, create_hash, mint_amount):
         hash_tx = None
         if chain == 'Solana':
-            url = f"{self.domain}/token/mint"
+            url = f"{self.sol_domain}/token/mint"
 
             payload = json.dumps(dict(
                 secretKey = private_key,
