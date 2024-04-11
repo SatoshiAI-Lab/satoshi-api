@@ -49,11 +49,16 @@ class WalletHandler():
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
-        json_data = self.get_balances_from_cqt(chain, address)
+        
+        json_data = None
+        if chain == 'Solana':
+            json_data = self.get_balances_from_helius(address)
+        if not json_data:
+            json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
             json_data = dict(address=address, value=0, tokens=[], chain=None)
         
-        cache.set(cache_key, self.json_data, timeout=10)
+        cache.set(cache_key, json_data, timeout=10)
         return json_data
     
     def get_balances_from_helius(self, address):
@@ -74,7 +79,37 @@ class WalletHandler():
         'Content-Type': 'application/json',
         }
         response = requests.request("POST", url, headers=headers, data=payload)
-        return json.loads(response.text)
+        try:
+            items = json.loads(response.text)['result']['items']
+        except:
+            return
+        tokens = []
+        value = 0
+        chain = dict(
+            id = 1399811149,
+            name = 'Solana',
+            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/Solana.png",
+        )
+        for item in items:
+            meta = item['content']['metadata']
+            token_info = item['token_info']
+            price_info = token_info.get('price_info', {})
+            tokens.append(dict(
+                symbol = meta['symbol'],
+                name = meta['name'],
+                decimals = token_info['decimals'],
+                amount = token_info['balance'],
+                address = item['id'],
+                priceUsd = price_info.get('price_per_token', 0),
+                valueUsd = price_info.get('total_price', 0),
+                logoUrl = None,
+                chain_id = chain['id'],
+                chain_name = chain['name'],
+                chain_logo = chain['logo'],
+            ))
+            value += price_info.get('total_price', 0)
+        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        return json_data
     
     def get_balances_from_cqt(self, chain, address):
         network_name = CHAIN_DICT.get(chain, dict()).get('cqt')
