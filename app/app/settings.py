@@ -129,6 +129,7 @@ DATABASES = {
         "NAME": os.getenv("POSTGRES_DB"),
         "USER": os.getenv("POSTGRES_USER"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "CONN_MAX_AGE": 300,
     },
     'source': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -137,6 +138,7 @@ DATABASES = {
         "NAME": os.getenv("SOURCE_DB"),
         "USER": os.getenv("SOURCE_USER"),
         "PASSWORD": os.getenv("SOURCE_PASSWORD"),
+        "CONN_MAX_AGE": 300,
     },
 }
 
