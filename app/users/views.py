@@ -315,7 +315,7 @@ class CreateTokenView(APIView):
             user=wallet.user,
         )
 
-        return Response(dict(data=dict(hash_tx=created_hash, status = log_obj.status)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=created_hash, status = log_obj.status, address = address)), status=status.HTTP_200_OK)
 
 
 class MintTokenView(APIView):
