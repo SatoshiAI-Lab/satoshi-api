@@ -66,41 +66,41 @@ services:
     depends_on:
       - redis
 
-  flower:
-    image: mher/flower:latest
-    container_name: satoshi_flower_container
-    restart: always
-    ports:
-      - "5555:5555" 
-    env_file:
-      - ./.env
-    networks:
-      - satoshi-link
-    depends_on:
-      - celeryworker
+  # flower:
+  #   image: mher/flower:latest
+  #   container_name: satoshi_flower_container
+  #   restart: always
+  #   ports:
+  #     - "5555:5555" 
+  #   env_file:
+  #     - ./.env
+  #   networks:
+  #     - satoshi-link
+  #   depends_on:
+  #     - celeryworker
 
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
-    environment:
-      - GF_LOG_LEVEL=debug
-    ports:
-      - '3000:3000'
-    volumes:
-      - 'grafana_storage:/var/lib/grafana'
-    networks:
-      - satoshi-link
+  # grafana:
+  #   image: grafana/grafana-enterprise
+  #   container_name: grafana
+  #   restart: unless-stopped
+  #   environment:
+  #     - GF_LOG_LEVEL=debug
+  #   ports:
+  #     - '3000:3000'
+  #   volumes:
+  #     - 'grafana_storage:/var/lib/grafana'
+  #   networks:
+  #     - satoshi-link
 
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - '9090:9090'
-    command: 
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.enable-lifecycle'
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    networks:
-      - satoshi-link
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   ports:
+  #     - '9090:9090'
+  #   command: 
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--web.enable-lifecycle'
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus_data:/prometheus
+  #   networks:
+  #     - satoshi-link
