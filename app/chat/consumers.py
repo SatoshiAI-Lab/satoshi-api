@@ -44,9 +44,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         self.last_ping_time = datetime.now()
-        asyncio.create_task(self.send_pong())
-        asyncio.create_task(self.check_timeout())
-        asyncio.create_task(self.event_push())
+        asyncio.create_task(self.safe_task(self.send_pong()))
+        asyncio.create_task(self.safe_task(self.check_timeout()))
+        asyncio.create_task(self.safe_task(self.event_push()))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
@@ -107,38 +107,39 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         await self.send(text_data=json.dumps({"type": "message", "data": message, "user_id": user_id}, ensure_ascii=False))
 
+    async def safe_task(self, coro):
+        try:
+            await coro
+        except Exception as e:
+            logger.error(f"Uncaught exception: {e}")
+
     async def event_push(self):
         user_id = str(self.scope["user"].id)
 
         sent_data = set()
         while True:
-            try:
-                subscriptions = await database_sync_to_async(list)(UserSubscription.objects.filter(user_id=user_id))
-                if subscriptions:
-                    subscriptions_dict = {}
-                    for subscription in subscriptions:
-                        if subscription.message_type == 3:
-                            content = {c['address']:c['name'] for c in subscription.content}
-                        else:
-                            content = subscription.content
-                        subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
+            subscriptions = await database_sync_to_async(list)(UserSubscription.objects.filter(user_id=user_id))
+            if subscriptions:
+                subscriptions_dict = {}
+                for subscription in subscriptions:
+                    if subscription.message_type == 3:
+                        content = {c['address']:c['name'] for c in subscription.content}
+                    else:
+                        content = subscription.content
+                    subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
 
-                    data = await self.get_event(user_id, subscriptions_dict)
+                data = await self.get_event(user_id, subscriptions_dict)
 
-                    new_data = [news for news in data if news["id"] not in sent_data]   
-                    sent_data.update([news["id"] for news in new_data])
-                    if new_data:
-                        await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
+                new_data = [news for news in data if news["id"] not in sent_data]   
+                sent_data.update([news["id"] for news in new_data])
+                if new_data:
+                    await self.send(text_data=json.dumps({"type": "event", "data": new_data}, ensure_ascii=False))
 
-                    # if data:
-                    #     await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
-                    #     await asyncio.sleep(10)
-                    # await asyncio.sleep(30)
-            except Exception as e:
-                logger.error(f'Get event error: {e}')
-            finally:
-                await asyncio.sleep(3)
-
+                # if data:
+                #     await self.send(text_data=json.dumps({"type": "event", "data": data}, ensure_ascii=False))
+                #     await asyncio.sleep(10)
+                # await asyncio.sleep(30)
+            await asyncio.sleep(3)
 
     async def get_event(self, user_id, subscriptions_dict):
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(120)) as session:
