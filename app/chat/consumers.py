@@ -44,7 +44,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         self.last_ping_time = datetime.now()
-        asyncio.create_task(self.safe_task(self.send_pong()))
+        # asyncio.create_task(self.safe_task(self.send_pong()))
         asyncio.create_task(self.safe_task(self.check_timeout()))
         asyncio.create_task(self.safe_task(self.event_push()))
 
