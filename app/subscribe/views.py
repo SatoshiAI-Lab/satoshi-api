@@ -83,7 +83,9 @@ class UserSubscriptionCreate(APIView):
                     data=json.dumps({
                         "addressList": to_create_addresses,
                         "net": "optimism",
-                    }),
+                    },
+                    timeout=15,
+                    ),
                 )
             if to_create_sol_addresses:
                 requests.request(
@@ -94,7 +96,9 @@ class UserSubscriptionCreate(APIView):
                     }, 
                     data=json.dumps({
                         "addresses": to_create_sol_addresses,
-                    }),
+                    },
+                    timeout=15,
+                    ),
                 )
 
             to_reduce_qs = TradeAddress.objects.filter(address__in=del_addresses_set).annotate(new_count=F('count') - 1)
@@ -122,7 +126,9 @@ class UserSubscriptionCreate(APIView):
                     data=json.dumps({
                         "addressList": to_delete_addresses,
                         "net": "optimism",
-                    }),
+                    },
+                    timeout=15,
+                    ),
                 )
             if to_delete_sol_addresses:
                 requests.request(
@@ -133,7 +139,9 @@ class UserSubscriptionCreate(APIView):
                     }, 
                     data=json.dumps({
                         "addresses": to_delete_sol_addresses,
-                    }),
+                    },
+                    timeout=15,
+                    ),
                 )
 
         return Response(dict(data=serializer.data), status=status.HTTP_200_OK)

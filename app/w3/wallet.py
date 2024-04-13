@@ -48,7 +48,7 @@ class WalletHandler():
     def create_wallet(self, platform):
         if platform == DEFAULT_PLATFORM:
             url = f"{self.sol_domain}/account/keyPair/new"
-            response = requests.request("GET", url)
+            response = requests.request("GET", url, timeout=15)
             if response.status_code != 200:
                 return 
             data = json.loads(response.text)['data']
@@ -109,7 +109,7 @@ class WalletHandler():
         headers = {
         'Content-Type': 'application/json',
         }
-        response = requests.request("POST", url, headers=headers, data=payload)
+        response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
         try:
             items = json.loads(response.text)['result']['items']
         except:
@@ -232,7 +232,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return 
 
@@ -261,7 +261,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return 
 
@@ -278,7 +278,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', [])
@@ -289,7 +289,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', [])
@@ -304,7 +304,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("GET", url, headers=headers, data=payload)
+            response = requests.request("GET", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', {}).get('token_address')
@@ -326,7 +326,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return hash_tx, address
             data = json.loads(response.text).get('data', dict())
@@ -346,7 +346,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return hash_tx, address
             data = json.loads(response.text).get('data', dict())
@@ -367,7 +367,7 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             if response.status_code != 200:
                 return hash_tx
             data = json.loads(response.text).get('data', dict())
