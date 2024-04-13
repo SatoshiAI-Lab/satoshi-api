@@ -76,7 +76,7 @@ class WalletHandler():
         return results
     
     def get_balances(self, chain, address):
-        cache_key = f"satoshi:balances:{address}"
+        cache_key = f"satoshi:{chain}_balances:{address}"
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
