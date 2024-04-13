@@ -26,13 +26,7 @@ class UserSubscriptionCreate(APIView):
         old_content = []
         new_content = request.data['content']
         message_type = request.data['message_type']
-
-        if message_type == 3:
-            for c in new_content:
-                if c.get('name'):
-                    continue
-                c['name'] = c['address'][-4:]
-
+                
         try:
             subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
             if not subscription.exists():
@@ -45,6 +39,13 @@ class UserSubscriptionCreate(APIView):
         
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
+        else:
+            for c in new_content:
+                if str(c['address']).startswith('0x') and len(str(c['address'])) == 42:
+                    c['address'] = str(c['address']).lower()
+                if c.get('name'):
+                    continue
+                c['name'] = c['address'][-4:]
         
         old_addresses_set = set([c['address'] for c in old_content])
         new_addresses_set = set([c['address'] for c in new_content])
@@ -66,7 +67,7 @@ class UserSubscriptionCreate(APIView):
                     record.count = F('count') + 1
                 else:
                     to_create.append(TradeAddress(address=address))
-                    if str(address).startswith('0x'):
+                    if str(address).startswith('0x') and len(str(address)) == 42:
                         to_create_addresses.append(address)
                     else:
                         to_create_sol_addresses.append(address)
@@ -103,7 +104,7 @@ class UserSubscriptionCreate(APIView):
             for record in to_reduce_qs:
                 if record.new_count >= 1:
                     to_reduce_addresses.append(record.address)
-                elif str(record.address).startswith('0x'):
+                elif str(record.address).startswith('0x') and len(str(record.address)) == 42:
                     to_delete_addresses.append(record.address)
                 else:
                     to_delete_sol_addresses.append(record.address)
