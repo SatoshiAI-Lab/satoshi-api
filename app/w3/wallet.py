@@ -253,10 +253,10 @@ class WalletHandler():
                 return
             elif input_token == zero_address:
                 url = f"{self.evm_domain}/evm/swap/buy"
-                token_address = input_token
+                token_address = output_token
             elif output_token == zero_address:
                 url = f"{self.evm_domain}/evm/swap/sell"
-                token_address = output_token
+                token_address = input_token
             else:
                 return
 
