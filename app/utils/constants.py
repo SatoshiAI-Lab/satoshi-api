@@ -71,7 +71,7 @@ CHAIN_DICT = {
         'cqt': 'bsc-mainnet',
         'gecko': 'bsc',
         'dex_tools': 'bsc',
-        'rpc': '',
+        'rpc': 'https://bsc-rpc.publicnode.com',
     },
     "Optimism": {
         'platform': 'EVM',
@@ -85,15 +85,15 @@ CHAIN_DICT = {
         'cqt': 'arbitrum-mainnet',
         'gecko': 'arbitrum',
         'dex_tools': 'arbitrum',
-        'rpc': '',
+        'rpc': 'https://arbitrum-one-rpc.publicnode.com',
     },
     "Base": {
         'platform': 'EVM',
         'cqt': 'base-mainnet',
         'gecko': 'base',
         'dex_tools': 'base',
-        'rpc': '',
-    }
+        'rpc': 'https://base-rpc.publicnode.com',
+    },
 }
 
 CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT}

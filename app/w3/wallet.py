@@ -169,7 +169,7 @@ class WalletHandler():
                     name = item.contract_name,
                     decimals = item.contract_decimals,
                     amount = item.balance,
-                    address = item.contract_address,
+                    address = item.contract_address.replace('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '0x0000000000000000000000000000000000000000'),
                     priceUsd = item.quote_rate,
                     valueUsd = item.quote,
                     logoUrl = item.logo_url,
