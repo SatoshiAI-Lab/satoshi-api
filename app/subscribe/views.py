@@ -46,8 +46,8 @@ class UserSubscriptionCreate(APIView):
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
         
-        old_addresses_set = set([c['address'] for c in old_content if c['chain'] == DEFAULT_CHAIN])
-        new_addresses_set = set([c['address'] for c in new_content if c['chain'] == DEFAULT_CHAIN])
+        old_addresses_set = set([c['address'] for c in old_content])
+        new_addresses_set = set([c['address'] for c in new_content])
         add_addresses_set = new_addresses_set - old_addresses_set
         del_addresses_set = old_addresses_set - new_addresses_set
 
@@ -59,15 +59,32 @@ class UserSubscriptionCreate(APIView):
 
             to_create = []
             to_create_addresses = []
+            to_create_sol_addresses = []
             for address in add_addresses_set:
                 if address in involved_records_dict:
                     record = involved_records_dict[address]
                     record.count = F('count') + 1
                 else:
                     to_create.append(TradeAddress(address=address))
-                    to_create_addresses.append(address)
+                    if str(address).startswith('0x'):
+                        to_create_addresses.append(address)
+                    else:
+                        to_create_sol_addresses.append(address)
             if to_create:
                 TradeAddress.objects.bulk_create(to_create)
+            if to_create_addresses:
+                requests.request(
+                    "POST", 
+                    f"{os.getenv('WEB3_EVM_API')}/evm/monitor/eoa_address/add", 
+                    headers={
+                        'Content-Type': 'application/json',
+                    }, 
+                    data=json.dumps({
+                        "addressList": to_create_addresses,
+                        "net": "optimism",
+                    }),
+                )
+            if to_create_sol_addresses:
                 requests.request(
                     "POST", 
                     f"{os.getenv('SUB_API')}/monitor/address/", 
@@ -75,17 +92,38 @@ class UserSubscriptionCreate(APIView):
                         'Content-Type': 'application/json',
                     }, 
                     data=json.dumps({
-                        "addresses": to_create_addresses
+                        "addresses": to_create_sol_addresses,
                     }),
                 )
 
             to_reduce_qs = TradeAddress.objects.filter(address__in=del_addresses_set).annotate(new_count=F('count') - 1)
-            to_delete_addresses = [record.address for record in to_reduce_qs if record.new_count < 1]
-            to_reduce_addresses = [record.address for record in to_reduce_qs if record.new_count >= 1]
+            to_reduce_addresses = []
+            to_delete_addresses = []
+            to_delete_sol_addresses = []
+            for record in to_reduce_qs:
+                if record.new_count >= 1:
+                    to_reduce_addresses.append(record.address)
+                elif str(record.address).startswith('0x'):
+                    to_delete_addresses.append(record.address)
+                else:
+                    to_delete_sol_addresses.append(record.address)
             if to_reduce_addresses:
                 TradeAddress.objects.filter(address__in=to_reduce_addresses).update(count=F('count') - 1)
+            if to_delete_addresses or to_delete_sol_addresses:
+                TradeAddress.objects.filter(address__in=to_delete_addresses + to_delete_sol_addresses).delete()
             if to_delete_addresses:
-                TradeAddress.objects.filter(address__in=to_delete_addresses).delete()
+                requests.request(
+                    "POST", 
+                    f"{os.getenv('WEB3_EVM_API')}/evm/monitor/eoa_address/remove", 
+                    headers={
+                        'Content-Type': 'application/json',
+                    }, 
+                    data=json.dumps({
+                        "addressList": to_delete_addresses,
+                        "net": "optimism",
+                    }),
+                )
+            if to_delete_sol_addresses:
                 requests.request(
                     "DELETE", 
                     f"{os.getenv('SUB_API')}/monitor/address/", 
@@ -93,7 +131,7 @@ class UserSubscriptionCreate(APIView):
                         'Content-Type': 'application/json',
                     }, 
                     data=json.dumps({
-                        "addresses": to_delete_addresses
+                        "addresses": to_delete_sol_addresses,
                     }),
                 )
 

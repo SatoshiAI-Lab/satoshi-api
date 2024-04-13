@@ -337,7 +337,7 @@ class MintTokenView(APIView):
         if not form.is_valid():
             return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         form_data = form.data
-        chain=form_data.get('chain', DEFAULT_CHAIN)
+        chain=form_data.get('chain', 'Solana')
         created_hash = form_data['created_hash']
 
         created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)

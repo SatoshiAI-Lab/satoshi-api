@@ -34,8 +34,8 @@ class UserSubscription(models.Model):
             if len(self.content) != len(set(self.content)):
                 raise ValidationError({'content': 'Elements are repeated.'})
         elif self.message_type == 3: # trade
-            if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 41 and item.get('chain', '') in CHAIN_DICT for item in self.content)):
-                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain address, and chain.'})
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 41 for item in self.content)):
+                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain address.'})
             addresses = [c['address'] for c in self.content]
             if len(addresses) != len(set(addresses)):
                 raise ValidationError({'content': 'Address elements are repeated.'})
