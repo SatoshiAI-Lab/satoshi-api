@@ -48,7 +48,11 @@ class WalletHandler():
     def create_wallet(self, platform):
         if platform == DEFAULT_PLATFORM:
             url = f"{self.sol_domain}/account/keyPair/new"
-            response = requests.request("GET", url, timeout=15)
+            try:
+                response = requests.request("GET", url, timeout=15)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return 
             data = json.loads(response.text)['data']
@@ -109,10 +113,11 @@ class WalletHandler():
         headers = {
         'Content-Type': 'application/json',
         }
-        response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
         try:
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
             items = json.loads(response.text)['result']['items']
-        except:
+        except Exception as e:
+            logger.error(f'Helius error: {e}')
             return
         tokens = []
         value = 0
@@ -232,7 +237,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return 
 
@@ -261,7 +270,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return 
 
@@ -278,7 +291,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', [])
@@ -289,7 +306,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', [])
@@ -304,7 +325,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("GET", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("GET", url, headers=headers, data=payload, timeout=15)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return data
             data = json.loads(response.text).get('data', {}).get('token_address')
@@ -326,7 +351,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return hash_tx, address
             data = json.loads(response.text).get('data', dict())
@@ -346,7 +375,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return hash_tx, address
             data = json.loads(response.text).get('data', dict())
@@ -367,7 +400,11 @@ class WalletHandler():
             headers = {
             'Content-Type': 'application/json',
             }
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            try:
+                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+            except Exception as e:
+                logger.error(f'Request timeout: {e}')
+                return
             if response.status_code != 200:
                 return hash_tx
             data = json.loads(response.text).get('data', dict())
