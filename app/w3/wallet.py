@@ -82,8 +82,8 @@ class WalletHandler():
             return cached_data
         
         json_data = None
-        if chain == 'Solana':
-            json_data = self.get_balances_from_helius(address)
+        # if chain == 'Solana':
+        #     json_data = self.get_balances_from_helius(address)
         if not json_data:
             json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
