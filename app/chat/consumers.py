@@ -119,7 +119,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         subscriptions = cache.get(cache_key)
         if not subscriptions:
             subscriptions = await database_sync_to_async(list)(UserSubscription.objects.filter(user_id=user_id))
-            cache.set(cache_key, subscriptions, timeout=300)
+            cache.set(cache_key, subscriptions, timeout=60)
         return subscriptions
 
     async def event_push(self):
