@@ -156,7 +156,7 @@ class WalletHandler():
             chain_id = b.data.chain_id
             chain_name = b.data.chain_name
             items = b.data.items
-            # items = self.update_token_info(b.data.items)
+            items = self.update_token_info(chain, b.data.items)
             tokens = []
             value = 0
             chain = dict(
@@ -182,25 +182,36 @@ class WalletHandler():
             json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
-    def update_token_info(self, items):
-        addresses = []
-        for item in items:
-            if item.contract_name and item.contract_ticker_symbol:
-                continue
-            addresses.append(item.contract_address)
-        
-        headers = {
-        'accept': 'application/json',
-        'x-api-key': os.getenv('SHYFT_KEY')
-        }
-        token_dict = MultiFetch.fetch_multiple_urls(headers, [f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={a}" for a in addresses])
-        for item in items:
-            res = token_dict.get(f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={item.contract_address}")
-            if not res:
-                continue
-            data = json.loads(res).get('result', {})
-            item.contract_name = data.get('name')
-            item.contract_ticker_symbol = data.get('symbol')
+    def update_token_info(self, chain, items):
+        if chain == 'Solana':
+            addresses = []
+            # for item in items:
+            #     if item.contract_name and item.contract_ticker_symbol:
+            #         continue
+            #     addresses.append(item.contract_address)
+
+            # headers = {
+            # 'accept': 'application/json',
+            # 'x-api-key': os.getenv('SHYFT_KEY')
+            # }
+            # token_dict = MultiFetch.fetch_multiple_urls(headers, [f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={a}" for a in addresses])
+            # for item in items:
+            #     res = token_dict.get(f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={item.contract_address}")
+            #     if not res:
+            #         continue
+            #     data = json.loads(res).get('result', {})
+            #     item.contract_name = data.get('name')
+            #     item.contract_ticker_symbol = data.get('symbol')
+        else:
+            w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+            for item in items:
+                if item.contract_name and item.contract_ticker_symbol:
+                    continue
+                if item.address == '0x0000000000000000000000000000000000000000':
+                    continue
+                contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=ERC20_ABI)
+                item.contract_name = contract.functions.name().call()
+                item.contract_ticker_symbol = contract.functions.symbol().call()        
         return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
