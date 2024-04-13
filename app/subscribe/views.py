@@ -196,7 +196,7 @@ class UserSubscriptionList(APIView):
             ) for chain in CHAIN_DICT]
 
         data = dict(
-            news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "off"})),
+            news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "on"})),
             twitter = dict(message_type=1, content=[{**twitter, 'subscribed': twitter['twitter_id'] in my_subscribed.get('twitter', [])} for twitter in twitters]),
             announcement = dict(message_type=2, content=[{**exchange, 
                                                           'logo': f"{os.getenv('S3_DOMAIN')}/exchange/logo/{exchange['name']}.png",
