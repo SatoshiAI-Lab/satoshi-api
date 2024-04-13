@@ -220,12 +220,21 @@ class UserSelectView(APIView):
 
 class AccountTypeView(APIView):
     def get(self, request):
-        target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
-        params = request.GET.dict()
-        headers = dict(request.headers)
+        chain = request.query_params.get('chain', DEFAULT_CHAIN)
+        if chain not in CHAIN_DICT:
+            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+        
+        if chain == 'Solana':
+            target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
+            params = request.GET.dict()
+            headers = dict(request.headers)
 
-        response = requests.get(target_url, params=params, headers=headers)
-        return Response(json.loads(response.content), status=response.status_code)
+            response = requests.get(target_url, params=params, headers=headers)
+            return Response(json.loads(response.content), status=response.status_code)
+        else:
+            address = request.query_params.get('address', '')
+            account_type = WalletHandler().account_type(chain, address)
+            return Response(dict(data=dict(type=account_type)), status=status.HTTP_200_OK)
     
 
 class HashStatusAPIView(APIView):

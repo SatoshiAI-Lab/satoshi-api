@@ -29,4 +29,4 @@ else
 fi
 
 
-python manage.py runserver 0.0.0.0:10101
+python manage.py runserver 0.0.0.0:$DJANGO_PORT

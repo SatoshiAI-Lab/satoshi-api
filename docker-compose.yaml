@@ -1,8 +1,8 @@
 version: "3.9"
 
-volumes:
-  grafana_storage: {}
-  prometheus_data: {}
+# volumes:
+#   grafana_storage: {}
+#   prometheus_data: {}
 
 networks:
   satoshi-link:

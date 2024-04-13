@@ -4,6 +4,7 @@ import json
 import os
 import requests
 from eth_account import Account
+from web3 import Web3
 
 from covalent import CovalentClient
 from concurrent import futures
@@ -21,6 +22,28 @@ class WalletHandler():
         self.evm_domain = os.getenv('WEB3_EVM_API')
         self.sol_domain = os.getenv('WEB3_SOL_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
+
+    @classmethod
+    def account_type(cls, chain, address):
+        w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+
+        def is_erc20_contract(a):
+            contract = w3.eth.contract(address=Web3.to_checksum_address(a), abi=ERC20_ABI)
+            try:
+                contract.functions.totalSupply().call()
+                contract.functions.balanceOf(a).call()
+                contract.functions.allowance(a, a).call()
+                return True
+            except:
+                return False
+
+        if w3.eth.get_code(address):
+            if is_erc20_contract(address):
+                return 'token'
+            else:
+                return 'unknown'
+        else:
+            return 'user'
 
     def create_wallet(self, platform):
         if platform == DEFAULT_PLATFORM:

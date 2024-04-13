@@ -1,0 +1,63 @@
+version: "3.9"
+
+networks:
+  satoshi-link:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.1.1.0/24
+
+services:
+  django-test: &django
+    build:
+      context: .
+      dockerfile: ./compose/Dockerfile
+    image: satoshi_django_image:latest
+    container_name: satoshi_django_test_container
+    volumes:
+      - ./app:/app
+    restart: always
+    depends_on:
+      - redis-test
+    networks:
+      - satoshi-link
+    env_file:
+      - ./.env
+    ports:
+      - "10106:10106"
+
+  redis-test:
+    image: redis:7.2.1-alpine3.18
+    container_name: satoshi_redis_test_container
+    restart: always
+    networks:
+      - satoshi-link
+
+  celeryworker-test:
+    <<: *django
+    image: satoshi_celeryworker_image:latest
+    container_name: satoshi_celery_test_container
+    env_file:
+      - ./.env
+    restart: always
+    ports: []
+    command: /start-celeryworker
+    networks:
+      - satoshi-link
+    depends_on:
+      - redis-test
+
+  celerybeat-test:
+    <<: *django
+    image: satoshi_celerybeat_image:latest
+    container_name: satoshi_celerybeat_test_container
+    env_file:
+      - ./.env
+    restart: always
+    ports: []
+    command: /start-celerybeat
+    networks:
+      - satoshi-link
+    depends_on:
+      - redis-test
