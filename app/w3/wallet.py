@@ -150,6 +150,7 @@ class WalletHandler():
         c = CovalentClient(os.getenv('CQT_KEY'))
         b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
         if b.error:
+            logger.error(str(b.error))
             return
         else:
             chain_id = b.data.chain_id
