@@ -76,10 +76,10 @@ class WalletHandler():
         return results
     
     def get_balances(self, chain, address):
-        cache_key = f"satoshi:{chain}_balances:{address}"
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return cached_data
+        # cache_key = f"satoshi:{chain}_balances:{address}"
+        # cached_data = cache.get(cache_key)
+        # if cached_data:
+        #     return cached_data
         
         json_data = None
         # if chain == 'Solana':
@@ -89,7 +89,7 @@ class WalletHandler():
         if not json_data:
             json_data = dict(address=address, value=0, tokens=[], chain=None)
         
-        cache.set(cache_key, json_data, timeout=10)
+        # cache.set(cache_key, json_data, timeout=10)
         return json_data
     
     def get_balances_from_helius(self, address):
@@ -189,6 +189,9 @@ class WalletHandler():
             #     if item.contract_name and item.contract_ticker_symbol:
             #         continue
             #     addresses.append(item.contract_address)
+
+                # item.contract_name = contract.functions.name().call()
+                # item.contract_ticker_symbol = contract.functions.symbol().call()     
 
             # headers = {
             # 'accept': 'application/json',

@@ -61,7 +61,7 @@ class ChainView(APIView):
 class WalletAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(cache_page(30))
+    # @method_decorator(cache_page(30))
     def get(self, request):
         chain = request.query_params.get('chain', DEFAULT_CHAIN)
         if not chain:

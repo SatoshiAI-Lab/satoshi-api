@@ -57,7 +57,7 @@ CHAIN_DICT = {
         'cqt': 'solana-mainnet',
         'gecko': 'solana',
         'dex_tools': 'solana',
-        'rpc': '',
+        'rpc': 'https://api.mainnet-beta.solana.com',
     },
     "Ethereum": {
         'platform': 'EVM',
