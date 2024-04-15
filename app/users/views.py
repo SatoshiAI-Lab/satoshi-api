@@ -23,6 +23,7 @@ import requests
 import time
 
 from w3.wallet import WalletHandler
+from utils.constants import *
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -291,7 +292,7 @@ class WalletTransactionView(APIView):
             user=wallet.user,
         )
 
-        return Response(dict(data=dict(hash_tx=transaction_hash, status = log_obj.status)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=transaction_hash, url=CHAIN_DICT[chain]['tx_url'] + transaction_hash, status = log_obj.status)), status=status.HTTP_200_OK)
     
 
 class CreateTokenView(APIView):
@@ -325,7 +326,7 @@ class CreateTokenView(APIView):
             user=wallet.user,
         )
 
-        return Response(dict(data=dict(hash_tx=created_hash, status = log_obj.status, address = address)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=created_hash, url=CHAIN_DICT[chain]['tx_url'] + created_hash, status = log_obj.status, address = address)), status=status.HTTP_200_OK)
 
 
 class MintTokenView(APIView):
@@ -368,5 +369,5 @@ class MintTokenView(APIView):
             user=wallet.user,
         )
         
-        return Response(dict(data=dict(hash_tx=mint_hash, address=address, status = log_obj.status)), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(hash_tx=mint_hash, url=CHAIN_DICT[chain]['tx_url'] + mint_hash, address=address, status = log_obj.status)), status=status.HTTP_200_OK)
 

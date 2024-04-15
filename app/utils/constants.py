@@ -58,6 +58,7 @@ CHAIN_DICT = {
         'gecko': 'solana',
         'dex_tools': 'solana',
         'rpc': 'https://api.mainnet-beta.solana.com',
+        'tx_url': 'https://solscan.io/tx/',
     },
     "Ethereum": {
         'platform': 'EVM',
@@ -65,6 +66,7 @@ CHAIN_DICT = {
         'gecko': 'eth',
         'dex_tools': 'ether',
         'rpc': 'https://ethereum-rpc.publicnode.com',
+        'tx_url': 'https://etherscan.io/tx/',
     },
     "BSC": {
         'platform': 'EVM',
@@ -72,6 +74,7 @@ CHAIN_DICT = {
         'gecko': 'bsc',
         'dex_tools': 'bsc',
         'rpc': 'https://bsc-rpc.publicnode.com',
+        'tx_url': 'https://bscscan.com/tx/',
     },
     "Optimism": {
         'platform': 'EVM',
@@ -79,6 +82,7 @@ CHAIN_DICT = {
         'gecko': 'optimism',
         'dex_tools': 'optimism',
         'rpc': 'https://optimism-rpc.publicnode.com',
+        'tx_url': 'https://optimistic.etherscan.io/tx/',
     },
     "Arbitrum": {
         'platform': 'EVM',
@@ -86,6 +90,7 @@ CHAIN_DICT = {
         'gecko': 'arbitrum',
         'dex_tools': 'arbitrum',
         'rpc': 'https://arbitrum-one-rpc.publicnode.com',
+        'tx_url': 'https://arbiscan.io/tx/',
     },
     "Base": {
         'platform': 'EVM',
@@ -93,6 +98,7 @@ CHAIN_DICT = {
         'gecko': 'base',
         'dex_tools': 'base',
         'rpc': 'https://base-rpc.publicnode.com',
+        'tx_url': 'https://basescan.org/tx/',
     },
 }
 

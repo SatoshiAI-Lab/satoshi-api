@@ -13,11 +13,12 @@ urlpatterns = [
     path('update-wallet-name/<str:pk>/', UpdateWalletNameView.as_view(), name='update-wallet-name'),
     path('wallet-delete/<str:pk>/', DeleteWalletView.as_view(), name='wallet-delete'),
     path('wallet-balance/<str:pk>/', WalletBalanceAPIView.as_view(), name='wallet-balance'),
-    path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
 
     path('account/type/', AccountTypeView.as_view(), name='account-type'),
-    path('hash/status/', HashStatusAPIView.as_view(),  name='hash-status'),
     path('coin/select/', UserSelectView.as_view(),  name='coin-select'),
+
+    path('hash/status/', HashStatusAPIView.as_view(),  name='hash-status'),
+    path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
     path('coin/create/<str:pk>/', CreateTokenView.as_view(),  name='coin-create'),
     path('coin/mint/<str:pk>/', MintTokenView.as_view(),  name='coin-mint'),
 ]
