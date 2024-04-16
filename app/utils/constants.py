@@ -100,6 +100,14 @@ CHAIN_DICT = {
         'rpc': 'https://base-rpc.publicnode.com',
         'tx_url': 'https://basescan.org/tx/',
     },
+    "Fantom": {
+        'platform': 'EVM',
+        'cqt': '',
+        'gecko': 'ftm',
+        'dex_tools': 'fantom',
+        'rpc': 'https://fantom-rpc.publicnode.com',
+        'tx_url': 'https://ftmscan.com/tx/',
+    },
 }
 
 CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT}
