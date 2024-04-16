@@ -54,7 +54,7 @@ PLATFORM_LIST = [
 CHAIN_DICT = {
     "Solana": {
         'platform': 'SOL',
-        'id': '',
+        'id': '1399811149',
         'cqt': 'solana-mainnet',
         'gecko': 'solana',
         'dex_tools': 'solana',
