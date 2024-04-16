@@ -2,6 +2,7 @@ import asyncio
 import os
 import aiohttp
 import json
+from urllib.parse import parse_qs
 
 from django.core.cache import cache
 from asgiref.sync import sync_to_async
@@ -38,19 +39,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room.members.all()
         ):
             raise PermissionDenied("You are not allowed to access this chat room.")
-        
-        self.language = self.scope['url_route']['kwargs'].get('lang', 'en')
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        self.last_ping_time = datetime.now()
+        asyncio.create_task(self.safe_task(self.init()))
         # asyncio.create_task(self.safe_task(self.send_pong()))
         asyncio.create_task(self.safe_task(self.check_timeout()))
         asyncio.create_task(self.safe_task(self.event_push()))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    async def init(self):
+        self.last_ping_time = datetime.now()
+        self.language = parse_qs(self.scope["query_string"].decode("utf8")).get('lang', ['en'])[0]
 
     async def send_pong(self):
         while True:
