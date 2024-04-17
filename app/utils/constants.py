@@ -142,7 +142,7 @@ CHAIN_DICT = {
         'rpc': 'https://rpc.ankr.com/blast',
         'tx_url': 'https://blastexplorer.io/tx/',
     },
-    "、": {
+    "Merlin": {
         'platform': 'EVM',
         'id': '4200',
         'cqt': '',
