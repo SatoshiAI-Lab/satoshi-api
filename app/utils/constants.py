@@ -116,7 +116,7 @@ CHAIN_DICT = {
         'tx_url': 'https://ftmscan.com/tx/',
     },
     "zkSync": {
-        'platform': 'ZK',
+        'platform': 'EVM',
         'id': '324',
         'cqt': 'zksync-mainnet',
         'gecko': 'zksync',
@@ -125,7 +125,7 @@ CHAIN_DICT = {
         'tx_url': 'https://explorer.zksync.io/tx/',
     },
     "Linea": {
-        'platform': 'Linea',
+        'platform': 'EVM',
         'id': '59144',
         'cqt': 'linea-mainnet',
         'gecko': 'linea',
@@ -134,13 +134,31 @@ CHAIN_DICT = {
         'tx_url': 'https://lineascan.build/tx/',
     },
     "Blast": {
-        'platform': 'Blast',
+        'platform': 'EVM',
         'id': '81457',
         'cqt': 'blast-mainnet',
         'gecko': 'blast',
         'dex_tools': 'blast',
         'rpc': 'https://rpc.ankr.com/blast',
         'tx_url': 'https://blastexplorer.io/tx/',
+    },
+    "、": {
+        'platform': 'EVM',
+        'id': '4200',
+        'cqt': '',
+        'gecko': 'merlin-chain',
+        'dex_tools': '',
+        'rpc': 'https://rpc.merlinchain.io',
+        'tx_url': 'https://scan.merlinchain.io/tx/',
+    },
+    "BEVM": {
+        'platform': 'EVM',
+        'id': '11501',
+        'cqt': '',
+        'gecko': 'bevm',
+        'dex_tools': '',
+        'rpc': 'https://rpc-mainnet-1.bevm.io',
+        'tx_url': 'https://scan-mainnet.bevm.io/tx/',
     },
 }
 
