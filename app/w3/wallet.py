@@ -251,20 +251,13 @@ class WalletHandler():
             zero_address = '0x0000000000000000000000000000000000000000'
             if input_token == zero_address and output_token == zero_address:
                 return
-            elif input_token == zero_address:
-                url = f"{self.evm_domain}/evm/swap/buy"
-                token_address = output_token
-            elif output_token == zero_address:
-                url = f"{self.evm_domain}/evm/swap/sell"
-                token_address = input_token
-            else:
-                return
-
+            url = f"{self.evm_domain}/evm/swap"
             payload = json.dumps(dict(
                 net = chain.lower(),
                 secretKey = private_key,
-                tokenAddress = token_address,
-                amount = amount,
+                tokenInAddress = input_token,
+                tokenOutAddress = output_token,
+                tokenInAmount = amount,
                 slippageBps = slippageBps,
             ))
             headers = {
