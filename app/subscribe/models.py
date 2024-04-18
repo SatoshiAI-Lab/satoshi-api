@@ -71,7 +71,6 @@ class TwitterUser(BaseModel):
     twitter = models.CharField(max_length=100, blank=True, null=True)
     twitter_id = models.CharField(max_length=100, blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
-    user_id = models.IntegerField()
     is_deleted = models.IntegerField()
     remark = models.CharField(max_length=300, blank=True, null=True)
     logo = models.CharField(max_length=300, blank=True, null=True)
@@ -81,7 +80,7 @@ class TwitterUser(BaseModel):
 
     class Meta:
         db_table = 'twitter_user'
-        unique_together = (('twitter_id', 'user_id'),)
+        unique_together = (('twitter_id'),)
 
 class Exchange(BaseModel):    
     slug = models.CharField(max_length=30, blank=True, null=False, unique=True)
