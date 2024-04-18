@@ -51,7 +51,7 @@ class GeckoAPI():
         pool = pools[0].get('attributes', {}) if len(pools) > 0 else {}
         data = dict(
             address = base.get('address'),
-            logo = base.get('image_url'),
+            logo = base['image_url'] if base.get('image_url') and base['image_url'] != 'missing.png' else None,
             name = base.get('name'),
             symbol = base.get('symbol'),
             description = info.get('description'),
