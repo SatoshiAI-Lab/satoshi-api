@@ -5,7 +5,8 @@ from django.db import transaction
 from django.db.models import F, Q
 from django.core.exceptions import ValidationError
 
-from .models import UserSubscription, TwitterUser, Exchange, TradeAddress
+from users.models import UserSubscription
+from .models import TwitterUser, Exchange, TradeAddress
 from .serializers import UserSubscriptionSerializer
 from rest_framework.permissions import IsAuthenticated
 from utils.constants import *

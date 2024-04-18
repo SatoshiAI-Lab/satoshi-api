@@ -24,7 +24,7 @@ class Coin(models.Model):
         left join chain c on tcd.platform_id=c.platform_id 
         where tcd.token_id = {self.id}
         """
-        chain_obj = CoinChainData.objects.using('source').raw(chain_sql)
+        chain_obj = CoinChainData.objects.using('coin_source').raw(chain_sql)
         chain = []
         if chain_obj:
             for c in chain_obj:

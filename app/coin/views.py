@@ -39,12 +39,12 @@ class CoinSearchView(APIView):
         select id,name,symbol,logo from token where symbol ilike %s 
         order by char_length(symbol) asc, strpos('{kw}',symbol) asc, market_cap desc limit {num};
         """
-        objs = models.Coin.objects.using('source').raw(sql, [f'%{kw}%'])
+        objs = models.Coin.objects.using('coin_source').raw(sql, [f'%{kw}%'])
         ser = serializers.CoinSearch(objs, many=True)
         ser_data = ser.data
         tokens = [t['id'] for t in ser_data]
 
-        full_objs = models.Coin.objects.using('source').filter(Q(name__icontains = kw) | Q(slug__icontains = kw)).order_by('-market_cap')[:num]
+        full_objs = models.Coin.objects.using('coin_source').filter(Q(name__icontains = kw) | Q(slug__icontains = kw)).order_by('-market_cap')[:num]
         full_ser = serializers.CoinSearch(full_objs, many=True)
         for fs in full_ser.data:
             if fs['id'] in tokens:
@@ -52,7 +52,7 @@ class CoinSearchView(APIView):
             tokens.append(fs['id'])
             ser_data.append(fs)
 
-        chain_objs = models.CoinChainData.objects.using('source').filter(address__icontains = kw)[:num]
+        chain_objs = models.CoinChainData.objects.using('coin_source').filter(address__icontains = kw)[:num]
         for chain_obj in chain_objs:
             try:
                 token = chain_obj.token
@@ -83,7 +83,7 @@ class CoinListView(APIView):
             return Response(dict(data=dict(list=[])), status=status.HTTP_200_OK)
 
         token_ids = [i['id'] for i in ids if i['type'] == 1]
-        t_models = models.Coin.objects.using('source').filter(id__in=token_ids)
+        t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
         token_data = serializers.CoinListSerializer(t_models, many=True).data
 
         return Response(dict(data=dict(list=token_data)), status=status.HTTP_200_OK)

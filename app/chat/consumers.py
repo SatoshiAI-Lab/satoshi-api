@@ -11,7 +11,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import ChatRoom, Message
 from django.core.exceptions import PermissionDenied
 from datetime import datetime, timedelta
-from subscribe.models import UserSubscription
+from users.models import UserSubscription
 from utils.constants import *
 
 import logging

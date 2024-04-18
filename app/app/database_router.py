@@ -1,5 +1,6 @@
 DATABASE_MAPPING = {
-    'source': 'source'
+    'coin': 'coin_source',
+    'subscribe': 'resource'
 }
 
 class DatabaseAppsRouter(object):

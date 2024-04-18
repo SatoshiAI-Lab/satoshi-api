@@ -1,7 +1,8 @@
 import json
 import uuid
-from eth_account import Account
 
+from django.utils.timezone import now
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
@@ -102,3 +103,46 @@ class WalletLog(models.Model):
         unique_together = (('hash_tx', 'chain'),)
 
  
+class UserSubscription(models.Model):
+    message_type = models.IntegerField()
+    content = models.JSONField()
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    update_time = models.DateTimeField(default=now)
+    create_time = models.DateTimeField(default=now)
+
+    class Meta:
+        db_table = 'user_subscription'
+        unique_together = (('message_type', 'user'),)
+
+    def clean(self):
+        if self.message_type < 0 or self.message_type > 4:
+            raise ValidationError({'content': 'Must between 0 and 4.'})
+        if self.message_type == 0: # news
+            if not isinstance(self.content, dict) or not 'switch' in self.content or self.content['switch'] not in ['on', 'off']:
+                raise ValidationError({'content': 'Must be a dictionary containing switch.'})
+        elif self.message_type == 1: # twitter
+            if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
+                raise ValidationError({'content': 'Must be a list of strings.'})
+            if len(self.content) != len(set(self.content)):
+                raise ValidationError({'content': 'Elements are repeated.'})
+        elif self.message_type == 2: # announcement
+            if not (isinstance(self.content, list) and all(isinstance(item, int) and item > 0 for item in self.content)):
+                raise ValidationError({'content': 'Must be a list of integers.'})
+            if len(self.content) != len(set(self.content)):
+                raise ValidationError({'content': 'Elements are repeated.'})
+        elif self.message_type == 3: # trade
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 41 for item in self.content)):
+                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain address.'})
+            addresses = [c['address'] for c in self.content]
+            if len(addresses) != len(set(addresses)):
+                raise ValidationError({'content': 'Address elements are repeated.'})
+        elif self.message_type == 4: # pool
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in CHAIN_DICT for item in self.content)):
+                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain chain.'})
+            chains = [c['chain'] for c in self.content]
+            if len(chains) != len(set(chains)):
+                raise ValidationError({'content': 'Chain elements are repeated.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

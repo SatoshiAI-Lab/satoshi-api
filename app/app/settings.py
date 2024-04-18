@@ -131,7 +131,16 @@ DATABASES = {
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
         "CONN_MAX_AGE": 300,
     },
-    'source': {
+    "resource": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "HOST": os.getenv("RESOURCE_HOST"),
+        "PORT": os.getenv("RESOURCE_PORT"),
+        "NAME": os.getenv("RESOURCE_DB"),
+        "USER": os.getenv("RESOURCE_USER"),
+        "PASSWORD": os.getenv("RESOURCE_PASSWORD"),
+        "CONN_MAX_AGE": 300,
+    },
+    'coin_source': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         "HOST": os.getenv("SOURCE_HOST"),
         "PORT": os.getenv("SOURCE_PORT"),
