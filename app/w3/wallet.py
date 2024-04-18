@@ -87,7 +87,9 @@ class WalletHandler():
         
         json_data = None
         # if chain == 'Solana':
-        #     json_data = self.get_balances_from_helius(address)
+        #     json_data = self.get_balances_from_helius(chain, address)
+        if chain == 'Merlin':
+            json_data = self.get_balances_from_merlin(chain, address)
         if not json_data:
             json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
@@ -96,7 +98,46 @@ class WalletHandler():
         # cache.set(cache_key, json_data, timeout=10)
         return json_data
     
-    def get_balances_from_helius(self, address):
+    def get_balances_from_merlin(self, chain, address):
+        json_data = {}
+        url = os.getenv('MERLIN_DOMAIN')
+        payload = {}
+        headers = {
+        'Content-Type': 'application/json',
+        }
+        try:
+            response = requests.request("GET", f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, data=payload, timeout=15)
+            items = json.loads(response.text).get('result', {}).get('data', {}).get('json', [])
+        except Exception as e:
+            logger.error(f'Request timeout: {e}')
+            return
+        if response.status_code != 200:
+            return json_data
+        tokens = []
+        value = None
+        chain = dict(
+            id = CHAIN_DICT[chain]['id'],
+            name = chain,
+            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+        )
+        for item in items:
+            tokens.append(dict(
+                symbol = item['symbol'],
+                name = item['name'],
+                decimals = item['decimals'],
+                amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
+                address = item['token_address'],
+                priceUsd = None,
+                valueUsd = None,
+                logoUrl = None,
+                chain_id = chain['id'],
+                chain_name = chain['name'],
+                chain_logo = chain['logo'],
+            ))
+        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        return json_data
+    
+    def get_balances_from_helius(self, chain, address):
         url = os.getenv('HELIUS_DOMAIN')
         payload = json.dumps({
         "jsonrpc": "2.0",
@@ -122,9 +163,9 @@ class WalletHandler():
         tokens = []
         value = 0
         chain = dict(
-            id = 1399811149,
-            name = 'Solana',
-            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/Solana.png",
+            id = CHAIN_DICT[chain]['id'],
+            name = chain,
+            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
         for item in items:
             meta = item['content']['metadata']
