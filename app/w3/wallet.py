@@ -254,13 +254,16 @@ class WalletHandler():
         else:
             w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
             for item in items:
-                if item.contract_name and item.contract_ticker_symbol:
-                    continue
-                if item.address == '0x0000000000000000000000000000000000000000':
-                    continue
-                contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=ERC20_ABI)
-                item.contract_name = contract.functions.name().call()
-                item.contract_ticker_symbol = contract.functions.symbol().call()        
+                try:
+                    if item.contract_name and item.contract_ticker_symbol:
+                        continue
+                    if item.address == '0x0000000000000000000000000000000000000000':
+                        continue
+                    contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=ERC20_ABI)
+                    item.contract_name = contract.functions.name().call()
+                    item.contract_ticker_symbol = contract.functions.symbol().call()    
+                except:
+                    continue    
         return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
