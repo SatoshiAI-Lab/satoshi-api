@@ -136,7 +136,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     subscriptions_dict = {}
                     for subscription in subscriptions:
                         if subscription.message_type == 3:
-                            content = {c['address']:c.get('name', c['address'][-4:]) for c in subscription.content}
+                            content = {c['address'].lower():c.get('name', c['address'][-4:]) for c in subscription.content}
                         else:
                             content = subscription.content
                         subscriptions_dict[MESSAGE_TYPE_DICT[subscription.message_type]] = content
