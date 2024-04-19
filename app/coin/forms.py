@@ -37,3 +37,7 @@ class CoinListForms(ListBaseForm):
 class CoinInfoForms(forms.Form):
     address = forms.CharField(required=True, min_length=42, max_length=44)
     chain = forms.CharField(required=False, min_length=1)
+
+
+class PoolSearchForms(forms.Form):
+    kw = forms.CharField(required=True)

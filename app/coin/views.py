@@ -116,3 +116,25 @@ class CoinInfoView(APIView):
         else:
             data['holders'] = None
         return Response(dict(data=data), status=status.HTTP_200_OK)
+    
+
+class PoolSearchView(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_page(1 * 60))
+    def get(self, request):
+        form = forms.PoolSearchForms(request.query_params)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+        kw = request.query_params['kw']
+
+        data = GeckoAPI.search(kw).get('pools', [])
+        for d in data:
+            network = d['network']
+            chain = GECKO_CHAIN_DICT.get(network.get('identifier', ''))
+            if not chain:
+                print(f"No chain: {network.get('identifier', '')}")
+                continue
+            d['network'] = dict(chain=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+        
+        return Response(dict(data=data), status=status.HTTP_200_OK)

@@ -1,6 +1,7 @@
 from utils.fetch import MultiFetch
 import os
 import json
+import requests
 
 
 class DexTools():
@@ -31,9 +32,21 @@ class DexTools():
 
 class GeckoAPI():
     domain = os.getenv('GECKO_DOMAIN')
+    app_domain = os.getenv('GECKO_APP_DOMAIN')
     headers = {
         'Accept': 'application/json;version=20230302',
     }
+
+    @classmethod
+    def search(cls, kw):
+        url = f'{cls.app_domain}/search?query={kw}'
+        payload = {}
+        headers = {'User-Agent': 'PostmanRuntime/7.37.3'}
+        response = requests.request("GET", url, headers=headers, data=payload)
+        if response.status_code != 200:
+            return {}
+        res = json.loads(response.text).get('data', {}).get('attributes', {})
+        return res
 
     @classmethod
     def token_info(cls, chain, address):

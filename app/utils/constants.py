@@ -162,7 +162,8 @@ CHAIN_DICT = {
     },
 }
 
-CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT}
+CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT if CHAIN_DICT[c]['cqt']}
+GECKO_CHAIN_DICT = {CHAIN_DICT[c]['gecko']:c for c in CHAIN_DICT if CHAIN_DICT[c]['gecko']}
 
 ERC20_ABI = [
     {"inputs": [],"name": "name","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},
