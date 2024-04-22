@@ -1,3 +1,4 @@
+import json
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -82,6 +83,11 @@ class CoinListView(APIView):
         if not ids:
             return Response(dict(data=dict(list=[])), status=status.HTTP_200_OK)
 
+        if isinstance(ids, str):
+            try:
+                ids = json.loads(ids)
+            except:
+                return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         token_ids = [i['id'] for i in ids if i['type'] == 1]
         t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
         token_data = serializers.CoinListSerializer(t_models, many=True).data
