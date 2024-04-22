@@ -48,8 +48,8 @@ class UserSubscriptionCreate(APIView):
                     continue
                 c['name'] = c['address'][-4:]
         
-        old_addresses_set = set([c['address'] for c in old_content])
-        new_addresses_set = set([c['address'] for c in new_content])
+        old_addresses_set = set([c['address'].lower() for c in old_content])
+        new_addresses_set = set([c['address'].lower() for c in new_content])
         add_addresses_set = new_addresses_set - old_addresses_set
         del_addresses_set = old_addresses_set - new_addresses_set
 
