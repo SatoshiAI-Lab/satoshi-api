@@ -104,6 +104,9 @@ class WalletLog(models.Model):
 
  
 class UserSubscription(models.Model):
+    id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False, unique=True
+    )
     message_type = models.IntegerField()
     content = models.JSONField()
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
