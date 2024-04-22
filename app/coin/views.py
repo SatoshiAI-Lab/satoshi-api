@@ -156,15 +156,23 @@ class CoinQueryView(APIView):
             return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
         kw = request.query_params['kw']
 
-        data = AveAPI.search(kw)
-        for d in data:
+        data = []
+        ave_data = AveAPI.search(kw)
+        for d in ave_data:
             chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
             if not chain:
                 continue
-            d['chain'] = dict(name=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
-            d['logo'] = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url')
-
-            d.pop('appendix', None)
-            d.pop('logo_url', None)
+            data.append(
+                dict(
+                    chain = dict(name=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png"),
+                    logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
+                    address = d['token'],
+                    name = d.get('name'),
+                    symbol = d.get('symbol'),
+                    decimal = d.get('decimal'),
+                    price_usd = d.get('current_price_usd'),
+                    price_change = d.get('price_change'),
+                )
+            )
         
         return Response(dict(data=data), status=status.HTTP_200_OK)
