@@ -79,3 +79,18 @@ class GeckoAPI():
         )
 
         return data
+    
+
+class AveAPI():
+    domain = os.getenv('AVE_DOMAIN')
+
+    @classmethod
+    def search(cls, kw):
+        url = f'{cls.domain}/tokens/query?keyword={kw}'
+        payload = {}
+        headers = {"X-Auth": os.getenv('AVE_AUTH')}
+        response = requests.request("GET", url, headers=headers, data=payload)
+        if response.status_code != 200:
+            return {}
+        res = json.loads(response.text).get('data', {}).get('token_list', [])
+        return res

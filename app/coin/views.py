@@ -15,7 +15,7 @@ from urllib.parse import urljoin
 from users import models as user_models
 from users.permissions import OptionalAuthentication
 from utils.constants import *
-from w3.dex import GeckoAPI, DexTools
+from w3.dex import GeckoAPI, DexTools, AveAPI
 
 
 class CoinSearchView(APIView):
@@ -142,5 +142,29 @@ class PoolSearchView(APIView):
                 print(f"No chain: {network.get('identifier', '')}")
                 continue
             d['network'] = dict(chain=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+        
+        return Response(dict(data=data), status=status.HTTP_200_OK)
+    
+
+class CoinQueryView(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_page(1 * 60))
+    def get(self, request):
+        form = forms.PoolSearchForms(request.query_params)
+        if not form.is_valid():
+            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+        kw = request.query_params['kw']
+
+        data = AveAPI.search(kw)
+        for d in data:
+            chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
+            if not chain:
+                continue
+            d['chain'] = dict(name=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+            d['logo'] = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url')
+
+            d.pop('appendix', None)
+            d.pop('logo_url', None)
         
         return Response(dict(data=data), status=status.HTTP_200_OK)
