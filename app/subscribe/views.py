@@ -57,7 +57,7 @@ class UserSubscriptionCreate(APIView):
             involved_records = TradeAddress.objects.filter(
                 Q(address__in=add_addresses_set) | Q(address__in=del_addresses_set)
             )
-            involved_records_dict = {record.address: record for record in involved_records}
+            involved_records_dict = {record.address.lower(): record for record in involved_records}
 
             to_create = []
             to_create_addresses = []

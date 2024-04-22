@@ -12,6 +12,9 @@ class BaseModel(models.Model):
         abstract = True
 
 class TradeAddress(BaseModel):
+    id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False, unique=True
+    )
     address = models.CharField(max_length=42)
     name = models.CharField(max_length=100)
     remark = models.CharField(max_length=300)
