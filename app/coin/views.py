@@ -164,7 +164,7 @@ class CoinQueryView(APIView):
                 address = d['token'],
                 name = d.get('name'),
                 symbol = d.get('symbol'),
-                decimal = d.get('decimal'),
+                decimals = d.get('decimal'),
                 price_usd = d.get('current_price_usd'),
                 price_change = d.get('price_change'),
             )
