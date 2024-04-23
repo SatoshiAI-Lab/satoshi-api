@@ -76,7 +76,7 @@ class Wallet(models.Model):
         
         if not is_update:
             if Wallet.objects.filter(user=self.user, platform=self.platform, public_key=self.public_key).exists():
-                raise serializers.ValidationError({"public_key": "This public key already exists."})
+                raise serializers.ValidationError(dict(data={'error': 'This public key already exists.'}))
 
         if not self.name:
             self.name = "Wallet " + self.address[-4:]
@@ -117,34 +117,34 @@ class UserSubscription(models.Model):
         db_table = 'user_subscription'
         unique_together = (('message_type', 'user'),)
 
-    def clean(self):
-        if self.message_type < 0 or self.message_type > 4:
-            raise ValidationError({'content': 'Must between 0 and 4.'})
-        if self.message_type == 0: # news
-            if not isinstance(self.content, dict) or not 'switch' in self.content or self.content['switch'] not in ['on', 'off']:
-                raise ValidationError({'content': 'Must be a dictionary containing switch.'})
-        elif self.message_type == 1: # twitter
-            if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
-                raise ValidationError({'content': 'Must be a list of strings.'})
-            if len(self.content) != len(set(self.content)):
-                raise ValidationError({'content': 'Elements are repeated.'})
-        elif self.message_type == 2: # announcement
-            if not (isinstance(self.content, list) and all(isinstance(item, int) and item > 0 for item in self.content)):
-                raise ValidationError({'content': 'Must be a list of integers.'})
-            if len(self.content) != len(set(self.content)):
-                raise ValidationError({'content': 'Elements are repeated.'})
-        elif self.message_type == 3: # trade
-            if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 41 for item in self.content)):
-                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain address.'})
-            addresses = [c['address'] for c in self.content]
-            if len(addresses) != len(set(addresses)):
-                raise ValidationError({'content': 'Address elements are repeated.'})
-        elif self.message_type == 4: # pool
-            if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in CHAIN_DICT for item in self.content)):
-                raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain chain.'})
-            chains = [c['chain'] for c in self.content]
-            if len(chains) != len(set(chains)):
-                raise ValidationError({'content': 'Chain elements are repeated.'})
+    # def clean(self):
+    #     if self.message_type < 0 or self.message_type > 4:
+    #         raise ValidationError({'content': 'Must between 0 and 4.'})
+    #     if self.message_type == 0: # news
+    #         if not isinstance(self.content, dict) or not 'switch' in self.content or self.content['switch'] not in ['on', 'off']:
+    #             raise ValidationError({'content': 'Must be a dictionary containing switch.'})
+    #     elif self.message_type == 1: # twitter
+    #         if not (isinstance(self.content, list) and all(isinstance(item, str) and len(item) > 0 for item in self.content)):
+    #             raise ValidationError({'content': 'Must be a list of strings.'})
+    #         if len(self.content) != len(set(self.content)):
+    #             raise ValidationError({'content': 'Elements are repeated.'})
+    #     elif self.message_type == 2: # announcement
+    #         if not (isinstance(self.content, list) and all(isinstance(item, int) and item > 0 for item in self.content)):
+    #             raise ValidationError({'content': 'Must be a list of integers.'})
+    #         if len(self.content) != len(set(self.content)):
+    #             raise ValidationError({'content': 'Elements are repeated.'})
+    #     elif self.message_type == 3: # trade
+    #         if not (isinstance(self.content, list) and all(isinstance(item, dict) and len(item.get('address', '')) > 41 for item in self.content)):
+    #             raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain address.'})
+    #         addresses = [c['address'] for c in self.content]
+    #         if len(addresses) != len(set(addresses)):
+    #             raise ValidationError({'content': 'Address elements are repeated.'})
+    #     elif self.message_type == 4: # pool
+    #         if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in CHAIN_DICT for item in self.content)):
+    #             raise ValidationError({'content': 'MIt must be a dictionary array. The element values in other dictionaries must contain chain.'})
+    #         chains = [c['chain'] for c in self.content]
+    #         if len(chains) != len(set(chains)):
+    #             raise ValidationError({'content': 'Chain elements are repeated.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()

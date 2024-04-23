@@ -16,13 +16,13 @@ import json
 import os
 
 
-class UserSubscriptionCreate(APIView):
+class UserSubscriptionSettings(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         
         old_content = []
         new_content = request.data['content']
@@ -36,7 +36,7 @@ class UserSubscriptionCreate(APIView):
                 old_content = subscription.first().content
                 subscription.update(**request.data)
         except ValidationError as e:
-            return Response(dict(data=e.messages), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=e.messages), status=status.HTTP_400_BAD_REQUEST)
         
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
@@ -147,44 +147,7 @@ class UserSubscriptionCreate(APIView):
 
         return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
 
-class UserSubscriptionUpdate(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def put(self, request, message_type, *args, **kwargs):
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type)
-        if not subscription.exists():
-            return Response(dict(data={"message": "Subscription not found."}), status=status.HTTP_404_NOT_FOUND)
-        
-        mutable_data = request.data.copy()
-        mutable_data['message_type'] = message_type
-        serializer = UserSubscriptionSerializer(subscription.first(), data=mutable_data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(dict(data=serializer.data))
-        return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
-
-class UserSubscriptionRetrieve(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, message_type, *args, **kwargs):
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type).first()
-        
-        if subscription:
-            serializer = UserSubscriptionSerializer(subscription)
-            return Response(dict(data=serializer.data))
-        return Response(dict(data={"message": "Subscription not found."}), status=status.HTTP_404_NOT_FOUND)
-
-class UserSubscriptionDelete(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request, message_type, *args, **kwargs):
-        subscription = UserSubscription.objects.filter(user_id=request.user, message_type=message_type).first()
-        if not subscription.DoesNotExist:
-            return Response(dict(data={"message": "Subscription not found."}), status=status.HTTP_404_NOT_FOUND)
-        
-        subscription.delete()
-        return Response(dict(data={"message": "Subscription deleted."}), status=status.HTTP_200_OK)
-    
 class UserSubscriptionList(APIView):
     permission_classes = [IsAuthenticated]
 

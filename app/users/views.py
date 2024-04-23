@@ -98,7 +98,7 @@ class WalletAPIView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
-        return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+        return Response(dict(error=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
 
 
 class ImportPrivateKeyView(APIView):
@@ -139,7 +139,7 @@ class ImportPrivateKeyView(APIView):
             wallet = Wallet.objects.create(**serializer.validated_data, user=request.user)
             return Response(dict(data=WalletSerializer(wallet).data), status=status.HTTP_200_OK)
         else:
-            return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
 
 
 class ExportPrivateKeyView(APIView):
@@ -163,7 +163,7 @@ class UpdateWalletNameView(APIView):
             serializer.save()
             return Response(dict(data=serializer.data))
         else:
-            return Response(dict(data=serializer.errors), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         
 
 class DeleteWalletView(APIView):
@@ -193,7 +193,7 @@ class UserSelectView(APIView):
     def post(self, request):
         form = forms.UserSelectForms(request.data)
         if not form.is_valid():
-            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         ids = form.data['ids']
         select_status = int(request.data['status'])
         
@@ -270,7 +270,7 @@ class WalletTransactionView(APIView):
     def post(self, request, pk):
         form = forms.WalletTransactionForms(request.data)
         if not form.is_valid():
-            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         form_data = form.data
         chain=form_data.get('chain', DEFAULT_CHAIN)
         
@@ -302,7 +302,7 @@ class CreateTokenView(APIView):
     def post(self, request, pk, *args, **kwargs):
         form = forms.CreateTokenForms(request.data)
         if not form.is_valid():
-            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         form_data = form.data
         chain=form_data.get('chain', DEFAULT_CHAIN)
         
@@ -336,7 +336,7 @@ class MintTokenView(APIView):
     def post(self, request, pk, *args, **kwargs):
         form = forms.MintTokenForms(request.data)
         if not form.is_valid():
-            return Response(dict(data={'error': 'Parameter error.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         form_data = form.data
         chain=form_data.get('chain', 'Solana')
         created_hash = form_data['created_hash']
