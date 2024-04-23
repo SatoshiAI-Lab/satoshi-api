@@ -24,7 +24,7 @@ class WalletHandler():
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
 
     @classmethod
-    def account_type(cls, chain, address):
+    def account_type(cls, address, chain):
         w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
 
         def is_erc20_contract(a):
@@ -45,6 +45,31 @@ class WalletHandler():
                 return 'unknown'
         else:
             return 'user'
+        
+    @classmethod
+    def account_type_exclude_token(cls, address, chain):
+        w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+
+        address = Web3.to_checksum_address(address)
+        if w3.eth.get_code(address):
+            return 'unknown'
+        else:
+            return 'user'
+        
+    def multi_account_type_exclude_token(self, address, chain_list):
+        with futures.ThreadPoolExecutor() as executor:
+            future_to_chain = {executor.submit(self.account_type_exclude_token, address, chain): chain for chain in chain_list}
+            results = {}
+            for future in futures.as_completed(future_to_chain):
+                chain = future_to_chain[future]
+                try:
+                    data = future.result()
+                    if chain not in results:
+                        results[chain] = {}
+                    results[chain] = data
+                except Exception as e:
+                    logging.error(f"Error query account type for chain '{chain}': {str(e)}")
+        return results
 
     def create_wallet(self, platform):
         if platform == DEFAULT_PLATFORM:
@@ -67,17 +92,32 @@ class WalletHandler():
             publicKey = publicKey.to_hex()
         return secretKey, publicKey, address
     
-    def multi_get_balances(self, chain, address_list):
+    # def multi_get_balances(self, chain, address_list):
+    #     with futures.ThreadPoolExecutor() as executor:
+    #         future_to_address = {executor.submit(self.get_balances, chain, address): address for address in address_list}
+    #         results = dict()
+    #         for future in futures.as_completed(future_to_address):
+    #             address = future_to_address[future]
+    #             try:
+    #                 data = future.result()
+    #                 results[address] = data
+    #             except Exception as e:
+    #                 logger.error(f"Error fetching balances for address '{address}': {str(e)}")
+    #     return results
+    
+    def multi_get_balances(self, address_list, chain_list):
         with futures.ThreadPoolExecutor() as executor:
-            future_to_address = {executor.submit(self.get_balances, chain, address): address for address in address_list}
-            results = dict()
-            for future in futures.as_completed(future_to_address):
-                address = future_to_address[future]
+            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list}
+            results = {}
+            for future in futures.as_completed(future_to_chain_address):
+                chain, address = future_to_chain_address[future]
                 try:
                     data = future.result()
-                    results[address] = data
+                    if address not in results:
+                        results[address] = {}
+                    results[address][chain] = data
                 except Exception as e:
-                    logger.error(f"Error fetching balances for address '{address}': {str(e)}")
+                    logging.error(f"Error fetching balances for chain '{chain}' and address '{address}': {str(e)}")
         return results
     
     def get_balances(self, chain, address):   
@@ -127,9 +167,9 @@ class WalletHandler():
                 priceUsd = None,
                 valueUsd = None,
                 logoUrl = None,
-                chain_id = chain['id'],
-                chain_name = chain['name'],
-                chain_logo = chain['logo'],
+                # chain_id = chain['id'],
+                # chain_name = chain['name'],
+                # chain_logo = chain['logo'],
             ))
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
@@ -177,9 +217,9 @@ class WalletHandler():
                 priceUsd = price_info.get('price_per_token', 0),
                 valueUsd = price_info.get('total_price', 0),
                 logoUrl = None,
-                chain_id = chain['id'],
-                chain_name = chain['name'],
-                chain_logo = chain['logo'],
+                # chain_id = chain['id'],
+                # chain_name = chain['name'],
+                # chain_logo = chain['logo'],
             ))
             value += price_info.get('total_price', 0)
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
@@ -217,11 +257,11 @@ class WalletHandler():
                     priceUsd = item.quote_rate,
                     valueUsd = item.quote,
                     logoUrl = item.logo_url,
-                    chain_id = chain['id'],
-                    chain_name = chain['name'],
-                    chain_logo = chain['logo'],
+                    # chain_id = chain['id'],
+                    # chain_name = chain['name'],
+                    # chain_logo = chain['logo'],
                 ))
-                value += item.quote
+                value += item.quote or 0
             json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     

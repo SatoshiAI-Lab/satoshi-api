@@ -5,6 +5,10 @@ class CoinSearchForms(forms.Form):
     kw = forms.CharField(required=True)
 
 
+class AddressQueryForms(forms.Form):
+    address = forms.CharField(required=True)
+
+
 class ListBaseForm(forms.Form):
     page_index = forms.IntegerField(min_value=1, required=False)
     page_size = forms.IntegerField(min_value=1, max_value=100, required=False)

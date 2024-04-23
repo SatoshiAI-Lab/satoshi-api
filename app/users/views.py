@@ -64,21 +64,20 @@ class WalletAPIView(APIView):
 
     # @method_decorator(cache_page(30))
     def get(self, request):
-        chain = request.query_params.get('chain', DEFAULT_CHAIN)
-        if not chain:
-            wallets = Wallet.objects.filter(user=request.user)
+        chains = request.query_params.get('chain')
+        if not chains:
+            chains = CHAIN_DICT.keys()
         else:
-            if chain not in CHAIN_DICT:
-                return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
-            wallets = Wallet.objects.filter(user=request.user, platform = CHAIN_DICT.get(chain, {}).get('platform'))
+            chains = chains.split(',')
+            for c in chains:
+                if c not in CHAIN_DICT:
+                    return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+        wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
         wallet_handler = WalletHandler()
-        balance_dict = wallet_handler.multi_get_balances(chain, [s['address'] for s in serializer.data])
+        balance_dict = wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains)
         for s in serializer.data:
-            data = balance_dict.get(s['address'], dict())
-            s['value'] = data.get('value', 0)
-            s['tokens'] = data.get('tokens', [])
-            s['chain'] = data.get('chain')
+            s['balances'] = balance_dict.get(s['address'])
         return Response(dict(data=serializer.data))
 
     def post(self, request, *args, **kwargs):
@@ -240,7 +239,7 @@ class AccountTypeView(APIView):
             return Response(json.loads(response.content), status=response.status_code)
         else:
             address = request.query_params.get('address', '')
-            account_type = WalletHandler().account_type(chain, address)
+            account_type = WalletHandler().account_type(address, chain)
             return Response(dict(data=dict(type=account_type)), status=status.HTTP_200_OK)
     
 
