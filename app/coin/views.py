@@ -159,20 +159,22 @@ class CoinQueryView(APIView):
         data = []
         ave_data = AveAPI.search(kw)
         for d in ave_data:
+            coin_data = dict(
+                logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
+                address = d['token'],
+                name = d.get('name'),
+                symbol = d.get('symbol'),
+                decimal = d.get('decimal'),
+                price_usd = d.get('current_price_usd'),
+                price_change = d.get('price_change'),
+            )
             chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
             if not chain:
-                continue
-            data.append(
-                dict(
-                    chain = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png"),
-                    logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
-                    address = d['token'],
-                    name = d.get('name'),
-                    symbol = d.get('symbol'),
-                    decimal = d.get('decimal'),
-                    price_usd = d.get('current_price_usd'),
-                    price_change = d.get('price_change'),
-                )
-            )
+                coin_data['chain'] = dict(name=d.get('chain'), id = None, logo = None)
+                coin_data['is_supported'] = False
+            else:
+                coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                coin_data['is_supported'] = True
+            data.append(coin_data)
         
         return Response(dict(data=data), status=status.HTTP_200_OK)
