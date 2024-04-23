@@ -93,7 +93,12 @@ class WalletHandler():
         if not json_data:
             json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
-            json_data = dict(address=address, value=0, tokens=[], chain=None)
+            chain = dict(
+                id = CHAIN_DICT[chain]['id'],
+                name = chain,
+                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+            )
+            json_data = dict(address=address, value=0, tokens=[], chain=chain)
         
         # cache.set(cache_key, json_data, timeout=10)
         return json_data
