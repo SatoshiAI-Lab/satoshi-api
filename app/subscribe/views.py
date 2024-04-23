@@ -19,6 +19,7 @@ import os
 class UserSubscriptionSettings(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():

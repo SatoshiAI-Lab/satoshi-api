@@ -79,15 +79,8 @@ class WalletHandler():
                     logger.error(f"Error fetching balances for address '{address}': {str(e)}")
         return results
     
-    def get_balances(self, chain, address):
-        # cache_key = f"satoshi:{chain}_balances:{address}"
-        # cached_data = cache.get(cache_key)
-        # if cached_data:
-        #     return cached_data
-        
+    def get_balances(self, chain, address):   
         json_data = None
-        # if chain == 'Solana':
-        #     json_data = self.get_balances_from_helius(chain, address)
         if chain == 'Merlin':
             json_data = self.get_balances_from_merlin(chain, address)
         if not json_data:
@@ -99,8 +92,6 @@ class WalletHandler():
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
             )
             json_data = dict(address=address, value=0, tokens=[], chain=chain)
-        
-        # cache.set(cache_key, json_data, timeout=10)
         return json_data
     
     def get_balances_from_merlin(self, chain, address):

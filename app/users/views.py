@@ -199,6 +199,8 @@ class UserSelectView(APIView):
         
         user_obj = User.objects.filter(id=request.user.id)
         existed_ids = user_obj.first().ids or []
+        if existed_ids:
+            existed_ids = json.loads(existed_ids)
         for id in ids:
             # add
             if select_status == 1:
