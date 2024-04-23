@@ -52,7 +52,7 @@ PLATFORM_LIST = [
 ]
 
 CHAIN_DICT = {
-    "Solana": {
+    "solana": {
         'platform': 'SOL',
         'id': '1399811149',
         'cqt': 'solana-mainnet',
@@ -62,7 +62,7 @@ CHAIN_DICT = {
         'rpc': 'https://api.mainnet-beta.solana.com',
         'tx_url': 'https://solscan.io/tx/',
     },
-    "Ethereum": {
+    "ethereum": {
         'platform': 'EVM',
         'id': '1',
         'cqt': 'eth-mainnet',
@@ -72,7 +72,7 @@ CHAIN_DICT = {
         'rpc': 'https://ethereum-rpc.publicnode.com',
         'tx_url': 'https://etherscan.io/tx/',
     },
-    "BSC": {
+    "bsc": {
         'platform': 'EVM',
         'id': '56',
         'cqt': 'bsc-mainnet',
@@ -82,7 +82,7 @@ CHAIN_DICT = {
         'rpc': 'https://bsc-rpc.publicnode.com',
         'tx_url': 'https://bscscan.com/tx/',
     },
-    "Optimism": {
+    "optimism": {
         'platform': 'EVM',
         'id': '10',
         'cqt': 'optimism-mainnet',
@@ -92,7 +92,7 @@ CHAIN_DICT = {
         'rpc': 'https://optimism-rpc.publicnode.com',
         'tx_url': 'https://optimistic.etherscan.io/tx/',
     },
-    "Arbitrum": {
+    "arbitrum": {
         'platform': 'EVM',
         'id': '42161',
         'cqt': 'arbitrum-mainnet',
@@ -102,7 +102,7 @@ CHAIN_DICT = {
         'rpc': 'https://arbitrum-one-rpc.publicnode.com',
         'tx_url': 'https://arbiscan.io/tx/',
     },
-    "Base": {
+    "base": {
         'platform': 'EVM',
         'id': '8453',
         'cqt': 'base-mainnet',
@@ -112,7 +112,7 @@ CHAIN_DICT = {
         'rpc': 'https://base-rpc.publicnode.com',
         'tx_url': 'https://basescan.org/tx/',
     },
-    "Fantom": {
+    "fantom": {
         'platform': 'EVM',
         'id': '250',
         'cqt': 'fantom-mainnet',
@@ -122,7 +122,7 @@ CHAIN_DICT = {
         'rpc': 'https://fantom-rpc.publicnode.com',
         'tx_url': 'https://ftmscan.com/tx/',
     },
-    "zkSync": {
+    "zksync": {
         'platform': 'EVM',
         'id': '324',
         'cqt': 'zksync-mainnet',
@@ -132,7 +132,7 @@ CHAIN_DICT = {
         'rpc': 'https://1rpc.io/zksync2-era',
         'tx_url': 'https://explorer.zksync.io/tx/',
     },
-    "Linea": {
+    "linea": {
         'platform': 'EVM',
         'id': '59144',
         'cqt': 'linea-mainnet',
@@ -142,7 +142,7 @@ CHAIN_DICT = {
         'rpc': 'https://1rpc.io/linea',
         'tx_url': 'https://lineascan.build/tx/',
     },
-    "Blast": {
+    "blast": {
         'platform': 'EVM',
         'id': '81457',
         'cqt': 'blast-mainnet',
@@ -152,7 +152,7 @@ CHAIN_DICT = {
         'rpc': 'https://rpc.ankr.com/blast',
         'tx_url': 'https://blastexplorer.io/tx/',
     },
-    "Merlin": {
+    "merlin": {
         'platform': 'EVM',
         'id': '4200',
         'cqt': '',
@@ -162,7 +162,7 @@ CHAIN_DICT = {
         'rpc': 'https://rpc.merlinchain.io',
         'tx_url': 'https://scan.merlinchain.io/tx/',
     },
-    "BEVM": {
+    "bevm": {
         'platform': 'EVM',
         'id': '11501',
         'cqt': '',
