@@ -178,12 +178,17 @@ class WalletBalanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        chain = request.query_params.get('chain', DEFAULT_CHAIN)
-        if chain not in CHAIN_DICT:
-            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+        chains = request.query_params.get('chain')
+        if not chains:
+            chains = CHAIN_DICT.keys()
+        else:
+            chains = chains.split(',')
+            for c in chains:
+                if c not in CHAIN_DICT:
+                    return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
-        data = wallet_handler.get_balances(chain, pk)
-        return Response(dict(data=dict(address=pk,value=data.get('value', 0),tokens=data.get('tokens', []), chain=data.get('chain'))))
+        balance_dict = wallet_handler.multi_get_balances([pk], chains)
+        return Response(dict(data=dict(address=pk, balances=balance_dict.get(pk))))
 
 
 class UserSelectView(APIView):
