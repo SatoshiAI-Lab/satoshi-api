@@ -37,6 +37,7 @@ class WalletHandler():
             except:
                 return False
 
+        address = Web3.to_checksum_address(address)
         if w3.eth.get_code(address):
             if is_erc20_contract(address):
                 return 'token'
