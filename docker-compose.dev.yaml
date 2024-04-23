@@ -1,7 +1,7 @@
 version: "3.9"
 
 networks:
-  satoshi-link:
+  satoshi-test-link:
     driver: bridge
     ipam:
       driver: default
@@ -21,7 +21,7 @@ services:
     depends_on:
       - redis-test
     networks:
-      - satoshi-link
+      - satoshi-test-link
     env_file:
       - ./.env
     ports:
@@ -32,7 +32,7 @@ services:
     container_name: satoshi_redis_test_container
     restart: always
     networks:
-      - satoshi-link
+      - satoshi-test-link
 
   celeryworker-test:
     <<: *django
@@ -44,7 +44,7 @@ services:
     ports: []
     command: /start-celeryworker
     networks:
-      - satoshi-link
+      - satoshi-test-link
     depends_on:
       - redis-test
 
@@ -58,6 +58,6 @@ services:
     ports: []
     command: /start-celerybeat
     networks:
-      - satoshi-link
+      - satoshi-test-link
     depends_on:
       - redis-test
