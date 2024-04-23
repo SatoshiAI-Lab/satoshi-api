@@ -164,7 +164,7 @@ class CoinQueryView(APIView):
                 continue
             data.append(
                 dict(
-                    chain = dict(name=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png"),
+                    chain = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png"),
                     logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
                     address = d['token'],
                     name = d.get('name'),
