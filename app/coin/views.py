@@ -190,6 +190,7 @@ class AddressQueryView(APIView):
             return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
         chains = CHAIN_DICT
+        excluded_chains = chains
 
         token_data = dict()
         ave_data = AveAPI.search(address)
@@ -211,11 +212,12 @@ class AddressQueryView(APIView):
             else:
                 coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
-                chains.pop(chain)
+                if chain in excluded_chains:
+                    excluded_chains.pop(chain)
             token_data[chain] = coin_data
         
         wallet_handler = WalletHandler()
-        address_type_res = wallet_handler.multi_account_type_exclude_token(address, chains)
+        address_type_res = wallet_handler.multi_account_type_exclude_token(address, excluded_chains)
 
         chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
         balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
