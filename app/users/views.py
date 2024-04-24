@@ -80,13 +80,17 @@ class WalletAPIView(APIView):
 
         data = dict()
         for k, v in balance_for_account.items():
+            res = []
             s_data = copy.deepcopy(serializer.data)
             for s in s_data:
-                d = v.get(s['address'], dict())
+                d = v.get(s['address'])
+                if not d:
+                    continue
                 s['value'] = d.get('value', 0)
                 s['tokens'] = d.get('tokens', [])
                 s['chain'] = d.get('chain')
-            data[k] = s_data
+                res.append(s)
+            data[k] = res
         return Response(dict(data=data))
 
     def post(self, request, *args, **kwargs):

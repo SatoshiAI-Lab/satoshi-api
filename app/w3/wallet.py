@@ -5,6 +5,8 @@ import os
 import requests
 from eth_account import Account
 from web3 import Web3
+import re
+from base58 import b58decode
 
 from covalent import CovalentClient
 from concurrent import futures
@@ -22,6 +24,17 @@ class WalletHandler():
         self.evm_domain = os.getenv('WEB3_EVM_API')
         self.sol_domain = os.getenv('WEB3_SOL_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
+
+    def identify_platform(self, address):
+        if re.match(r'^0x[a-fA-F0-9]{40}$', address):
+            return 'EVM'
+        try:
+            decoded = b58decode(address)
+            if len(decoded) in [32, 64]:
+                return 'SOL'
+        except ValueError:
+            pass
+        return ''
 
     @classmethod
     def account_type(cls, address, chain):
@@ -92,22 +105,9 @@ class WalletHandler():
             publicKey = publicKey.to_hex()
         return secretKey, publicKey, address
     
-    # def multi_get_balances(self, chain, address_list):
-    #     with futures.ThreadPoolExecutor() as executor:
-    #         future_to_address = {executor.submit(self.get_balances, chain, address): address for address in address_list}
-    #         results = dict()
-    #         for future in futures.as_completed(future_to_address):
-    #             address = future_to_address[future]
-    #             try:
-    #                 data = future.result()
-    #                 results[address] = data
-    #             except Exception as e:
-    #                 logger.error(f"Error fetching balances for address '{address}': {str(e)}")
-    #     return results
-    
-    def multi_get_balances(self, address_list, chain_list):
+    def multi_get_balances(self, address_list, chain_list):           
         with futures.ThreadPoolExecutor() as executor:
-            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list}
+            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list if self.identify_platform(address) == CHAIN_DICT[chain]['platform']}
             results = {}
             for future in futures.as_completed(future_to_chain_address):
                 chain, address = future_to_chain_address[future]
