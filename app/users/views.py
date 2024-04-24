@@ -70,7 +70,7 @@ class WalletAPIView(APIView):
         else:
             chains = chains.split(',')
             for c in chains:
-                if c not in CHAIN_DICT:
+                if c and str(c).strip() not in CHAIN_DICT:
                     return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
