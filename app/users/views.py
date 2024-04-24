@@ -70,7 +70,7 @@ class WalletAPIView(APIView):
         else:
             chains = [str(c).strip() for c in chains.split(',') if c]
             for c in chains:
-                if c not in CHAIN_DICT:
+                if c not in CHAIN_DICT.keys():
                     return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
@@ -184,7 +184,7 @@ class WalletBalanceAPIView(APIView):
         else:
             chains = [str(c).strip() for c in chains.split(',') if c]
             for c in chains:
-                if c not in CHAIN_DICT:
+                if c not in CHAIN_DICT.keys():
                     return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
         balance_dict = wallet_handler.multi_get_balances([pk], chains)
