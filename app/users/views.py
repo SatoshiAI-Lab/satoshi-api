@@ -68,7 +68,7 @@ class WalletAPIView(APIView):
         if not chains:
             chains = CHAIN_DICT.keys()
         else:
-            chains = [c for c in chains.split(',') if not str(c).strip()]
+            chains = [c for c in chains.split(',') if str(c).strip()]
             for c in chains:
                 if c not in CHAIN_DICT:
                     return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
@@ -182,7 +182,7 @@ class WalletBalanceAPIView(APIView):
         if not chains:
             chains = CHAIN_DICT.keys()
         else:
-            chains = [c for c in chains.split(',') if not str(c).strip()]
+            chains = [c for c in chains.split(',') if str(c).strip()]
             for c in chains:
                 if c not in CHAIN_DICT:
                     return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
