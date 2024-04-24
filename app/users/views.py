@@ -20,7 +20,7 @@ import json
 import re
 import os
 import requests
-import time
+import copy
 
 from w3.wallet import WalletHandler
 from utils.constants import *
@@ -65,12 +65,13 @@ class WalletAPIView(APIView):
     # @method_decorator(cache_page(30))
     def get(self, request):
         chains = request.query_params.get('chain')
+        all_chains = copy.deepcopy(CHAIN_DICT)
         if not chains:
-            chains = CHAIN_DICT.keys()
+            chains = all_chains.keys()
         else:
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
-                if c not in CHAIN_DICT.keys():
+                if c not in all_chains:
                     return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
@@ -79,12 +80,13 @@ class WalletAPIView(APIView):
 
         data = dict()
         for k, v in balance_for_account.items():
-            for s in serializer.data:
+            s_data = copy.deepcopy(serializer.data)
+            for s in s_data:
                 d = v.get(s['address'], dict())
                 s['value'] = d.get('value', 0)
                 s['tokens'] = d.get('tokens', [])
                 s['chain'] = d.get('chain')
-                data[k] = s
+            data[k] = s_data
         return Response(dict(data=data))
 
     def post(self, request, *args, **kwargs):
@@ -186,12 +188,13 @@ class WalletBalanceAPIView(APIView):
 
     def get(self, request, address):
         chains = request.query_params.get('chain')
+        all_chains = copy.deepcopy(CHAIN_DICT)
         if not chains:
-            chains = CHAIN_DICT.keys()
+            chains = all_chains.keys()
         else:
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
-                if c not in CHAIN_DICT.keys():
+                if c not in all_chains:
                     return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
         balance_for_account = wallet_handler.multi_get_balances([address], chains)

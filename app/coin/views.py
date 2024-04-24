@@ -1,4 +1,5 @@
 import json
+import copy
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -189,7 +190,7 @@ class AddressQueryView(APIView):
         if not form.is_valid():
             return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
-        chains = CHAIN_DICT
+        chains = copy.deepcopy(CHAIN_DICT)
         excluded_chains = chains
 
         token_data = dict()
