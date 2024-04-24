@@ -68,17 +68,24 @@ class WalletAPIView(APIView):
         if not chains:
             chains = CHAIN_DICT.keys()
         else:
-            chains = [str(c).strip() for c in chains.split(',') if c]
+            chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in CHAIN_DICT.keys():
-                    return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+                    return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
         wallet_handler = WalletHandler()
-        balance_dict = wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains)
-        for s in serializer.data:
-            s['balances'] = balance_dict.get(s['address'])
-        return Response(dict(data=serializer.data))
+        balance_for_account = wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains)
+
+        data = dict()
+        for k, v in balance_for_account.items():
+            for s in serializer.data:
+                d = v.get(s['address'], dict())
+                s['value'] = d.get('value', 0)
+                s['tokens'] = d.get('tokens', [])
+                s['chain'] = d.get('chain')
+                data[k] = s
+        return Response(dict(data=data))
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -177,18 +184,18 @@ class DeleteWalletView(APIView):
 class WalletBalanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk):
+    def get(self, request, address):
         chains = request.query_params.get('chain')
         if not chains:
             chains = CHAIN_DICT.keys()
         else:
-            chains = [str(c).strip() for c in chains.split(',') if c]
+            chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in CHAIN_DICT.keys():
-                    return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+                    return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
-        balance_dict = wallet_handler.multi_get_balances([pk], chains)
-        return Response(dict(data=dict(address=pk, balances=balance_dict.get(pk))))
+        balance_for_account = wallet_handler.multi_get_balances([address], chains)
+        return Response(dict(data={k:v[address] if len(v) else v for k, v in balance_for_account.items()}))
 
 
 class UserSelectView(APIView):

@@ -113,9 +113,9 @@ class WalletHandler():
                 chain, address = future_to_chain_address[future]
                 try:
                     data = future.result()
-                    if address not in results:
-                        results[address] = {}
-                    results[address][chain] = data
+                    if chain not in results:
+                        results[chain] = {}
+                    results[chain][address] = data
                 except Exception as e:
                     logging.error(f"Error fetching balances for chain '{chain}' and address '{address}': {str(e)}")
         return results

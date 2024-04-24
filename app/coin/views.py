@@ -222,4 +222,4 @@ class AddressQueryView(APIView):
         chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
         balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
 
-        return Response(dict(data=dict(tokens=token_data, accounts=balance_for_account.get(address))), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(tokens=token_data, accounts={k:v[address] if len(v) else v for k, v in balance_for_account.items()})), status=status.HTTP_200_OK)
