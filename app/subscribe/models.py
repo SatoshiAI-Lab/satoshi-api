@@ -11,6 +11,14 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+
+class Config(BaseModel):
+    ave_auth = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        db_table = 'config'
+
+
 class TradeAddress(BaseModel):
     id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False, unique=True

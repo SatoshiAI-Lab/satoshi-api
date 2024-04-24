@@ -2,6 +2,9 @@ from utils.fetch import MultiFetch
 import os
 import json
 import requests
+from django.core.cache import cache
+
+from subscribe import models as subscribe_models
 
 
 class DexTools():
@@ -85,10 +88,20 @@ class AveAPI():
     domain = os.getenv('AVE_DOMAIN')
 
     @classmethod
+    def get_auth(cls):
+        ave_cache_key = f'satoshi:ave_auth'  # 重复检测
+        ave_auth = cache.get(ave_cache_key)
+        if not ave_auth:
+            ave_auth = subscribe_models.Config.objects.filter(id=1).first().ave_auth
+        else:
+            cache.set(ave_cache_key, 1, 300)
+        return ave_auth
+
+    @classmethod
     def search(cls, kw):
         url = f'{cls.domain}/tokens/query?keyword={kw}'
         payload = {}
-        headers = {"X-Auth": os.getenv('AVE_AUTH')}
+        headers = {"X-Auth": cls.get_auth()}
         response = requests.request("GET", url, headers=headers, data=payload)
         if response.status_code != 200:
             return {}
