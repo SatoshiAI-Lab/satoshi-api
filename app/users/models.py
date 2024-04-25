@@ -2,13 +2,12 @@ import json
 import uuid
 
 from django.utils.timezone import now
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
 from users.managers import UserManager
 from rest_framework import serializers
-from utils.constants import *
+from utils import constants
 
 from django_cryptography.fields import encrypt
 
@@ -39,7 +38,7 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.ids:
-            self.ids = json.dumps(DEFAULT_IDS)
+            self.ids = json.dumps(constants.DEFAULT_IDS)
         return super().save(*args, **kwargs)
 
 
@@ -72,7 +71,7 @@ class Wallet(models.Model):
             is_update = False
 
         if not self.platform:
-            self.platform = DEFAULT_PLATFORM
+            self.platform = constants.DEFAULT_PLATFORM
         
         if not is_update:
             if Wallet.objects.filter(user=self.user, platform=self.platform, public_key=self.public_key).exists():

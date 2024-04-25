@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import User, Wallet
-from w3.wallet import WalletHandler
-from utils.constants import *
 
 
 class UserSerializer(serializers.ModelSerializer):

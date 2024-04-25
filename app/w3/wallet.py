@@ -10,7 +10,7 @@ from base58 import b58decode
 
 from covalent import CovalentClient
 from concurrent import futures
-from utils.constants import *
+from utils import constants
 
 from utils.fetch import MultiFetch
 
@@ -38,10 +38,10 @@ class WalletHandler():
 
     @classmethod
     def account_type(cls, address, chain):
-        w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+        w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
 
         def is_erc20_contract(a):
-            contract = w3.eth.contract(address=Web3.to_checksum_address(a), abi=ERC20_ABI)
+            contract = w3.eth.contract(address=Web3.to_checksum_address(a), abi=constants.ERC20_ABI)
             try:
                 contract.functions.totalSupply().call()
                 contract.functions.balanceOf(a).call()
@@ -61,7 +61,7 @@ class WalletHandler():
         
     @classmethod
     def account_type_exclude_token(cls, address, chain):
-        w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+        w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
 
         address = Web3.to_checksum_address(address)
         if w3.eth.get_code(address):
@@ -85,7 +85,7 @@ class WalletHandler():
         return results
 
     def create_wallet(self, platform):
-        if platform == DEFAULT_PLATFORM:
+        if platform == 'SOL':
             url = f"{self.sol_domain}/account/keyPair/new"
             try:
                 response = requests.request("GET", url, timeout=15)
@@ -107,7 +107,7 @@ class WalletHandler():
     
     def multi_get_balances(self, address_list, chain_list):           
         with futures.ThreadPoolExecutor() as executor:
-            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list if self.identify_platform(address) == CHAIN_DICT[chain]['platform']}
+            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list if self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']}
             results = {}
             for future in futures.as_completed(future_to_chain_address):
                 chain, address = future_to_chain_address[future]
@@ -128,7 +128,7 @@ class WalletHandler():
             json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
             chain = dict(
-                id = str(CHAIN_DICT[chain]['id']),
+                id = str(constants.CHAIN_DICT[chain]['id']),
                 name = chain,
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
             )
@@ -153,7 +153,7 @@ class WalletHandler():
         tokens = []
         value = None
         chain = dict(
-            id = str(CHAIN_DICT[chain]['id']),
+            id = str(constants.CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
@@ -197,7 +197,7 @@ class WalletHandler():
         tokens = []
         value = 0
         chain = dict(
-            id = str(CHAIN_DICT[chain]['id']),
+            id = str(constants.CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
@@ -220,7 +220,7 @@ class WalletHandler():
         return json_data
     
     def get_balances_from_cqt(self, chain, address):
-        network_name = CHAIN_DICT.get(chain, dict()).get('cqt')
+        network_name = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
         
@@ -238,8 +238,8 @@ class WalletHandler():
             value = 0
             chain = dict(
                 id = str(chain_id),
-                name = CQT_CHAIN_DICT[chain_name],
-                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
+                name = constants.CQT_CHAIN_DICT[chain_name],
+                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
             )
             for item in items:
                 tokens.append(dict(
@@ -280,14 +280,14 @@ class WalletHandler():
             #     item.contract_name = data.get('name')
             #     item.contract_ticker_symbol = data.get('symbol')
         else:
-            w3 = Web3(Web3.HTTPProvider(CHAIN_DICT[chain]['rpc']))
+            w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
             for item in items:
                 try:
                     if item.contract_name and item.contract_ticker_symbol:
                         continue
                     if item.address == '0x0000000000000000000000000000000000000000':
                         continue
-                    contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=ERC20_ABI)
+                    contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=constants.ERC20_ABI)
                     item.contract_name = contract.functions.name().call()
                     item.contract_ticker_symbol = contract.functions.symbol().call()    
                 except:

@@ -15,7 +15,7 @@ import os
 from urllib.parse import urljoin
 from users import models as user_models
 from users.permissions import OptionalAuthentication
-from utils.constants import *
+from utils import constants, response_util
 from w3.dex import GeckoAPI, DexTools, AveAPI
 from w3.wallet import WalletHandler
 
@@ -27,7 +27,7 @@ class CoinSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         reserved_chars = r'''?&|!{}[]()^~*:\\"'+-'''
@@ -66,7 +66,8 @@ class CoinSearchView(APIView):
             except:
                 continue
         data['coin'] = ser_data[:num]
-        return Response(dict(data=data), status=status.HTTP_200_OK)
+        return response_util.success(data=data)
+
 
 class CoinListView(APIView):
     permission_classes = [OptionalAuthentication]
@@ -75,7 +76,7 @@ class CoinListView(APIView):
     def post(self, request):
         form = forms.CoinListForms(request.data)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
 
         uid = request.user.id
         if uid:
@@ -83,18 +84,18 @@ class CoinListView(APIView):
         else:
             ids = request.data.get('ids')
         if not ids:
-            return Response(dict(data=dict(list=[])), status=status.HTTP_200_OK)
+            return response_util.success(data=dict(list=[]))
 
         if isinstance(ids, str):
             try:
                 ids = json.loads(ids)
             except:
-                return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+                return response_util.param_error(msg=list(form.errors.values())[0][0])
         token_ids = [i['id'] for i in ids if i['type'] == 1]
         t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
         token_data = serializers.CoinListSerializer(t_models, many=True).data
 
-        return Response(dict(data=dict(list=token_data)), status=status.HTTP_200_OK)
+        return response_util.success(data=dict(list=token_data))
     
 
 class CoinInfoView(APIView):
@@ -104,15 +105,15 @@ class CoinInfoView(APIView):
     def get(self, request):
         form = forms.CoinInfoForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
         address = request.query_params['address']
-        chain = request.query_params.get('chain', DEFAULT_CHAIN)
-        if chain not in CHAIN_DICT:
-            return Response(dict(detail='Chain error.'),status=status.HTTP_400_BAD_REQUEST)
+        chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
+        if chain not in constants.CHAIN_DICT:
+            return response_util.param_error(msg='Chain error.')
 
         data = dict()
-        chain_gecko = CHAIN_DICT.get(chain, {}).get('gecko')
-        chain_dex_tools = CHAIN_DICT.get(chain, {}).get('dex_tools')
+        chain_gecko = constants.CHAIN_DICT.get(chain, {}).get('gecko')
+        chain_dex_tools = constants.CHAIN_DICT.get(chain, {}).get('dex_tools')
         if chain_gecko:
             gecko_data = GeckoAPI.token_info(chain_gecko, address)
             data = dict(data, **gecko_data)
@@ -123,7 +124,7 @@ class CoinInfoView(APIView):
             data['holders'] = dex_tools_data.get('holders')
         else:
             data['holders'] = None
-        return Response(dict(data=data), status=status.HTTP_200_OK)
+        return response_util.success(data=data)
     
 
 class PoolSearchView(APIView):
@@ -133,18 +134,18 @@ class PoolSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         data = GeckoAPI.search(kw).get('pools', [])
         for d in data:
             network = d['network']
-            chain = GECKO_CHAIN_DICT.get(network.get('identifier', ''))
+            chain = constants.GECKO_CHAIN_DICT.get(network.get('identifier', ''))
             if not chain:
                 continue
             d['network'] = dict(chain=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
         
-        return Response(dict(data=data), status=status.HTTP_200_OK)
+        return response_util.success(data=data)
     
 
 class CoinQueryView(APIView):
@@ -154,7 +155,7 @@ class CoinQueryView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         data = []
@@ -169,17 +170,17 @@ class CoinQueryView(APIView):
                 price_usd = d.get('current_price_usd'),
                 price_change = d.get('price_change'),
             )
-            chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
+            chain = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
             if not chain:
                 coin_data['chain'] = dict(name=d.get('chain'), id = None, logo = None)
                 coin_data['is_supported'] = False
                 continue
             else:
-                coin_data['chain'] = dict(name=chain, id = str(CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                coin_data['chain'] = dict(name=chain, id = str(constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
             data.append(coin_data)
         
-        return Response(dict(data=data), status=status.HTTP_200_OK)
+        return response_util.success(data=data)
     
 
 class AddressQueryView(APIView):
@@ -189,10 +190,10 @@ class AddressQueryView(APIView):
     def get(self, request):
         form = forms.AddressQueryForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(form.errors.values())[0][0])
         address = request.query_params['address']
         addr_type = request.query_params.get('type')
-        chains = copy.deepcopy(CHAIN_DICT)
+        chains = copy.deepcopy(constants.CHAIN_DICT)
         excluded_chains = chains
         token_data = dict()
         account_data = dict()
@@ -209,14 +210,14 @@ class AddressQueryView(APIView):
                     price_usd = d.get('current_price_usd'),
                     price_change = d.get('price_change'),
                 )
-                chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
+                chain = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
                 if not chain:
                     chain = d.get('chain')
                     coin_data['chain'] = dict(name=chain, id = None, logo = None)
                     coin_data['is_supported'] = False
                     continue
                 else:
-                    coin_data['chain'] = dict(name=chain, id = str(CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                    coin_data['chain'] = dict(name=chain, id = str(constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                     coin_data['is_supported'] = True
                     if chain in excluded_chains:
                         excluded_chains.pop(chain)
@@ -230,4 +231,4 @@ class AddressQueryView(APIView):
             balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
             account_data = {k:v[address] if len(v) else v for k, v in balance_for_account.items()}
 
-        return Response(dict(data=dict(tokens=token_data, accounts=account_data)), status=status.HTTP_200_OK)
+        return response_util.success(data=dict(tokens=token_data, accounts=account_data))

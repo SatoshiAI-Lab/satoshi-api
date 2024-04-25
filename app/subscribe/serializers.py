@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from users.models import UserSubscription
-from utils.constants import *
+from utils import constants
+
 
 class UserSubscriptionSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -35,7 +36,7 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
             if len(addresses) != len(set(addresses)):
                 raise serializers.ValidationError({'content': 'Content address elements are repeated.'})
         elif self.message_type == 4: # pool
-            if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in CHAIN_DICT for item in self.content)):
+            if not (isinstance(self.content, list) and all(isinstance(item, dict) and item.get('chain', '') in constants.CHAIN_DICT for item in self.content)):
                 raise serializers.ValidationError({'content': 'Content mit must be a dictionary array. The element values in other dictionaries must contain chain.'})
             chains = [c['chain'] for c in self.content]
             if len(chains) != len(set(chains)):

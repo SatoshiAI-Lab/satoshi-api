@@ -9,7 +9,7 @@ from users.models import UserSubscription
 from .models import TwitterUser, Exchange, TradeAddress
 from .serializers import UserSubscriptionSerializer
 from rest_framework.permissions import IsAuthenticated
-from utils.constants import *
+from utils import constants, response_util
 
 import requests
 import json
@@ -23,7 +23,7 @@ class UserSubscriptionSettings(APIView):
     def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(dict(detail=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=list(serializer.errors.values())[0][0])
         
         old_content = []
         new_content = request.data['content']
@@ -37,10 +37,10 @@ class UserSubscriptionSettings(APIView):
                 old_content = subscription.first().content
                 subscription.update(**request.data)
         except ValidationError as e:
-            return Response(dict(detail=e.messages), status=status.HTTP_400_BAD_REQUEST)
+            return response_util.param_error(msg=e.messages)
         
         if message_type != 3:
-            return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
+            return response_util.success(data=serializer.data)
         else:
             for c in new_content:
                 if str(c['address']).startswith('0x') and len(str(c['address'])) == 42:
@@ -146,7 +146,7 @@ class UserSubscriptionSettings(APIView):
                     timeout=15,
                 )
 
-        return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
+        return response_util.success(data=serializer.data)
 
 
 class UserSubscriptionList(APIView):
@@ -154,7 +154,7 @@ class UserSubscriptionList(APIView):
 
     def get(self, request, *args, **kwargs):
         subscriptions = UserSubscription.objects.filter(user_id=request.user)
-        my_subscribed = {MESSAGE_TYPE_DICT[s.message_type]: s.content for s in subscriptions}
+        my_subscribed = {constants.MESSAGE_TYPE_DICT[s.message_type]: s.content for s in subscriptions}
 
         twitters = TwitterUser.objects.filter(is_deleted=0).values('twitter_id', 'name', 'logo')
         exchanges = Exchange.objects.filter(announcement_subable=1).values('id', 'slug', 'name')
@@ -166,7 +166,7 @@ class UserSubscriptionList(APIView):
                 min = pool_dict.get(chain, {}).get('min'), 
                 subscribed = True if chain in pool_dict else False,
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
-            ) for chain in CHAIN_DICT]
+            ) for chain in constants.CHAIN_DICT]
 
         data = dict(
             news = dict(message_type=0, content=my_subscribed.get('news', {"switch": "on"})),
@@ -177,5 +177,4 @@ class UserSubscriptionList(APIView):
             trade = dict(message_type=3, content=my_subscribed.get('trade', [])),
             pool = dict(message_type=4, content=pool_data),
         )
-        return Response(dict(data=data))
-    
+        return response_util.success(data=data)    

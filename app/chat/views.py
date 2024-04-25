@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer
 from users.models import User
+from utils import response_util
 
 
 class ChatRoomDetailView(generics.RetrieveAPIView):
@@ -21,4 +22,4 @@ class ChatRoomDetailView(generics.RetrieveAPIView):
             chat_room = ChatRoom.objects.create()
             chat_room.members.add(self.request.user, self.receiver)
 
-        return chat_room
+        return response_util.success(chat_room)
