@@ -76,7 +76,7 @@ class Wallet(models.Model):
         
         if not is_update:
             if Wallet.objects.filter(user=self.user, platform=self.platform, public_key=self.public_key).exists():
-                raise serializers.ValidationError(dict(data={'error': 'This public key already exists.'}))
+                raise serializers.ValidationError(dict(error='This public key already exists.'))
 
         if not self.name:
             self.name = "Wallet " + self.address[-4:]

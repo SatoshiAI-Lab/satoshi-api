@@ -72,7 +72,7 @@ class WalletAPIView(APIView):
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in all_chains:
-                    return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
+                    return Response(dict(error=f'Chain {c} error.'),status=status.HTTP_400_BAD_REQUEST)
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
         wallet_handler = WalletHandler()
@@ -97,13 +97,13 @@ class WalletAPIView(APIView):
         data = request.data
         data['platform'] = data.get('platform', DEFAULT_PLATFORM)
         if data['platform'] not in PLATFORM_LIST:
-            return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='Platform error.'),status=status.HTTP_400_BAD_REQUEST)
         
         wallet_handler = WalletHandler()
         data['private_key'], data['public_key'], data['address'] = wallet_handler.create_wallet(data['platform'])
         
         if not data['private_key']:
-            return Response(dict(data={'error': 'Create the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='Create the private key failed.'),status=status.HTTP_400_BAD_REQUEST)
 
         serializer = WalletSerializer(data=data, context={'request': request})
         
@@ -122,15 +122,15 @@ class ImportPrivateKeyView(APIView):
         platform = data.get('platform', DEFAULT_PLATFORM)
 
         if platform not in PLATFORM_LIST:
-            return Response(dict(data={'error': 'Platform error.'}),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='Platform error.'),status=status.HTTP_400_BAD_REQUEST)
 
         if platform == 'EVM':
             if len(private_key) < 64 or len(private_key) > 66:
-                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+                return Response(dict(error='Import the private key failed.'),status=status.HTTP_400_BAD_REQUEST)
 
             # pattern = re.compile(r"^[0-9a-fA-F]+$")
             # if not re.match(pattern, private_key):
-            #     return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+            #     return Response(dict(error='Import the private key failed.'),status=status.HTTP_400_BAD_REQUEST)
             
             private_key_hex = "0x" + private_key if not private_key.startswith("0x") else private_key
             public_key = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
@@ -138,7 +138,7 @@ class ImportPrivateKeyView(APIView):
             data['address'] = public_key.to_checksum_address()
         elif platform == 'SOL':
             if len(private_key) > 90 or len(private_key) < 85:
-                return Response(dict(data={'error': 'Import the private key failed.'}),status=status.HTTP_400_BAD_REQUEST)
+                return Response(dict(error='Import the private key failed.'),status=status.HTTP_400_BAD_REQUEST)
             
             private_key_bytes = base58.b58decode(private_key)
             signing_key = SigningKey(seed=private_key_bytes[:32])
@@ -162,7 +162,7 @@ class ExportPrivateKeyView(APIView):
         if wallet.user == request.user:
             return Response(dict(data={'private_key': wallet.private_key}))
         else:
-            return Response(dict(data={'error': 'You do not have permission to view this private key.'}), status=status.HTTP_403_FORBIDDEN)
+            return Response(dict(error='You do not have permission to view this private key.'), status=status.HTTP_403_FORBIDDEN)
 
 
 class UpdateWalletNameView(APIView):
@@ -176,7 +176,7 @@ class UpdateWalletNameView(APIView):
     def patch(self, request, pk):
         obj = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.data.get('name', ''))
         if obj.exists():
-            return Response(dict(data={'error': 'The wallet name already exists.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='The wallet name already exists.'), status=status.HTTP_400_BAD_REQUEST)
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         serializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
         if serializer.is_valid():
@@ -207,7 +207,7 @@ class WalletBalanceAPIView(APIView):
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in all_chains:
-                    return Response(dict(data={'error': f'Chain {c} error.'}),status=status.HTTP_400_BAD_REQUEST)
+                    return Response(dict(error=f'Chain {c} error.'),status=status.HTTP_400_BAD_REQUEST)
         wallet_handler = WalletHandler()
         balance_for_account = wallet_handler.multi_get_balances([address], chains)
         return Response(dict(data={k:v[address] if len(v) else v for k, v in balance_for_account.items()}))
@@ -255,7 +255,7 @@ class AccountTypeView(APIView):
     def get(self, request):
         chain = request.query_params.get('chain', DEFAULT_CHAIN)
         if chain not in CHAIN_DICT:
-            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='Chain error.'),status=status.HTTP_400_BAD_REQUEST)
         
         if chain == 'Solana':
             target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
@@ -276,7 +276,7 @@ class HashStatusAPIView(APIView):
     def get(self, request):
         chain = request.query_params.get('chain', DEFAULT_CHAIN)
         if chain not in CHAIN_DICT:
-            return Response(dict(data={'error': 'Chain error.'}),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='Chain error.'),status=status.HTTP_400_BAD_REQUEST)
         hash_tx = request.query_params.get('hash_tx')
         
         obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
@@ -310,7 +310,7 @@ class WalletTransactionView(APIView):
         wallet_handler = WalletHandler()
         transaction_hash = wallet_handler.token_transaction(chain, wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
         if not transaction_hash:
-            return Response(dict(data={'error': 'No hash, transaction failed.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='No hash, transaction failed.'), status=status.HTTP_400_BAD_REQUEST)
         
         log_obj = WalletLog.objects.create(
             chain=chain,
@@ -345,7 +345,7 @@ class CreateTokenView(APIView):
         amount = form_data.get('amount', 0)
         created_hash, address = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], form_data.get('desc', ''), str(form_data['decimals']), str(amount))
         if not created_hash:
-            return Response(dict(data={'error': 'No hash, create token failed.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='No hash, create token failed.'), status=status.HTTP_400_BAD_REQUEST)
         log_obj = WalletLog.objects.create(
             chain=chain,
             input_token=address,
@@ -377,7 +377,7 @@ class MintTokenView(APIView):
         wallet_handler = WalletHandler()
         check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(created_log.added_at.timestamp()))])
         if not (check_res and check_res[0].get('isPending') == False and check_res[0].get('isSuccess') == True): # succeed
-            return Response(dict(data={'error': 'Hash status error.'}), status=status.HTTP_400_BAD_REQUEST) 
+            return Response(dict(error='Hash status error.'), status=status.HTTP_400_BAD_REQUEST) 
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
@@ -387,7 +387,7 @@ class MintTokenView(APIView):
         # mint token
         mint_hash = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
         if not mint_hash:
-            return Response(dict(data={'error': 'No hash, mint token failed.'}), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(error='No hash, mint token failed.'), status=status.HTTP_400_BAD_REQUEST)
         
         log_obj = WalletLog.objects.create(
             chain=chain,
