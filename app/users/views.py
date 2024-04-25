@@ -168,7 +168,15 @@ class ExportPrivateKeyView(APIView):
 class UpdateWalletNameView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get(self, request, pk):
+        obj = Wallet.objects.filter(pk=pk, user=request.user, name = request.query_params.get('name', ''))
+        res = True if obj.exists() else False
+        return Response(dict(data={'result': res}), status=status.HTTP_200_OK)
+
     def patch(self, request, pk):
+        obj = Wallet.objects.filter(pk=pk, user=request.user, name = request.data.get('name', ''))
+        if obj.exists():
+            return Response(dict(data={'error': 'The wallet name already exists.'}), status=status.HTTP_400_BAD_REQUEST)
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         serializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
         if serializer.is_valid():
