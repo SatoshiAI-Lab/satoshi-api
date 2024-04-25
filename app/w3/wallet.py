@@ -128,7 +128,7 @@ class WalletHandler():
             json_data = self.get_balances_from_cqt(chain, address)
         if not json_data:
             chain = dict(
-                id = CHAIN_DICT[chain]['id'],
+                id = str(CHAIN_DICT[chain]['id']),
                 name = chain,
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
             )
@@ -153,7 +153,7 @@ class WalletHandler():
         tokens = []
         value = None
         chain = dict(
-            id = CHAIN_DICT[chain]['id'],
+            id = str(CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
@@ -167,9 +167,6 @@ class WalletHandler():
                 priceUsd = None,
                 valueUsd = None,
                 logoUrl = None,
-                # chain_id = chain['id'],
-                # chain_name = chain['name'],
-                # chain_logo = chain['logo'],
             ))
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
@@ -200,7 +197,7 @@ class WalletHandler():
         tokens = []
         value = 0
         chain = dict(
-            id = CHAIN_DICT[chain]['id'],
+            id = str(CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
@@ -217,9 +214,6 @@ class WalletHandler():
                 priceUsd = price_info.get('price_per_token', 0),
                 valueUsd = price_info.get('total_price', 0),
                 logoUrl = None,
-                # chain_id = chain['id'],
-                # chain_name = chain['name'],
-                # chain_logo = chain['logo'],
             ))
             value += price_info.get('total_price', 0)
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
@@ -243,7 +237,7 @@ class WalletHandler():
             tokens = []
             value = 0
             chain = dict(
-                id = chain_id,
+                id = str(chain_id),
                 name = CQT_CHAIN_DICT[chain_name],
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{CQT_CHAIN_DICT[chain_name]}.png",
             )
@@ -257,9 +251,6 @@ class WalletHandler():
                     priceUsd = item.quote_rate,
                     valueUsd = item.quote,
                     logoUrl = item.logo_url,
-                    # chain_id = chain['id'],
-                    # chain_name = chain['name'],
-                    # chain_logo = chain['logo'],
                 ))
                 value += item.quote or 0
             json_data = dict(address=address, value=value, tokens=tokens, chain=chain)

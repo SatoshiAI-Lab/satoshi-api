@@ -175,7 +175,7 @@ class CoinQueryView(APIView):
                 coin_data['is_supported'] = False
                 continue
             else:
-                coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                coin_data['chain'] = dict(name=chain, id = str(CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
             data.append(coin_data)
         
@@ -191,38 +191,43 @@ class AddressQueryView(APIView):
         if not form.is_valid():
             return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
+        addr_type = request.query_params.get('type')
         chains = copy.deepcopy(CHAIN_DICT)
         excluded_chains = chains
-
         token_data = dict()
-        ave_data = AveAPI.search(address)
-        for d in ave_data:
-            coin_data = dict(
-                logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
-                address = d['token'],
-                name = d.get('name'),
-                symbol = d.get('symbol'),
-                decimals = d.get('decimal'),
-                price_usd = d.get('current_price_usd'),
-                price_change = d.get('price_change'),
-            )
-            chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
-            if not chain:
-                chain = d.get('chain')
-                coin_data['chain'] = dict(name=chain, id = None, logo = None)
-                coin_data['is_supported'] = False
-                continue
-            else:
-                coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
-                coin_data['is_supported'] = True
-                if chain in excluded_chains:
-                    excluded_chains.pop(chain)
-            token_data[chain] = coin_data
+        account_data = dict()
+
+        if not addr_type or addr_type == 'token':
+            ave_data = AveAPI.search(address)
+            for d in ave_data:
+                coin_data = dict(
+                    logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
+                    address = d['token'],
+                    name = d.get('name'),
+                    symbol = d.get('symbol'),
+                    decimals = d.get('decimal'),
+                    price_usd = d.get('current_price_usd'),
+                    price_change = d.get('price_change'),
+                )
+                chain = AVE_CHAIN_DICT.get(d.get('chain', ''))
+                if not chain:
+                    chain = d.get('chain')
+                    coin_data['chain'] = dict(name=chain, id = None, logo = None)
+                    coin_data['is_supported'] = False
+                    continue
+                else:
+                    coin_data['chain'] = dict(name=chain, id = str(CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                    coin_data['is_supported'] = True
+                    if chain in excluded_chains:
+                        excluded_chains.pop(chain)
+                token_data[chain] = coin_data
         
-        wallet_handler = WalletHandler()
-        address_type_res = wallet_handler.multi_account_type_exclude_token(address, excluded_chains)
+        if not addr_type or addr_type == 'account':
+            wallet_handler = WalletHandler()
+            address_type_res = wallet_handler.multi_account_type_exclude_token(address, excluded_chains)
 
-        chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
-        balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
+            chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
+            balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
+            account_data = {k:v[address] if len(v) else v for k, v in balance_for_account.items()}
 
-        return Response(dict(data=dict(tokens=token_data, accounts={k:v[address] if len(v) else v for k, v in balance_for_account.items()})), status=status.HTTP_200_OK)
+        return Response(dict(data=dict(tokens=token_data, accounts=account_data)), status=status.HTTP_200_OK)
