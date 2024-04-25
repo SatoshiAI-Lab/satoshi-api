@@ -173,6 +173,7 @@ class CoinQueryView(APIView):
             if not chain:
                 coin_data['chain'] = dict(name=d.get('chain'), id = None, logo = None)
                 coin_data['is_supported'] = False
+                continue
             else:
                 coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
@@ -210,6 +211,7 @@ class AddressQueryView(APIView):
                 chain = d.get('chain')
                 coin_data['chain'] = dict(name=chain, id = None, logo = None)
                 coin_data['is_supported'] = False
+                continue
             else:
                 coin_data['chain'] = dict(name=chain, id = CHAIN_DICT[chain]['id'], logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
