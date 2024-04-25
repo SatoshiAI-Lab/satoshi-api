@@ -27,7 +27,7 @@ class CoinSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         kw = request.query_params['kw']
 
         reserved_chars = r'''?&|!{}[]()^~*:\\"'+-'''
@@ -75,7 +75,7 @@ class CoinListView(APIView):
     def post(self, request):
         form = forms.CoinListForms(request.data)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
 
         uid = request.user.id
         if uid:
@@ -89,7 +89,7 @@ class CoinListView(APIView):
             try:
                 ids = json.loads(ids)
             except:
-                return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+                return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         token_ids = [i['id'] for i in ids if i['type'] == 1]
         t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
         token_data = serializers.CoinListSerializer(t_models, many=True).data
@@ -104,11 +104,11 @@ class CoinInfoView(APIView):
     def get(self, request):
         form = forms.CoinInfoForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
         chain = request.query_params.get('chain', DEFAULT_CHAIN)
         if chain not in CHAIN_DICT:
-            return Response(dict(error='Chain error.'),status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail='Chain error.'),status=status.HTTP_400_BAD_REQUEST)
 
         data = dict()
         chain_gecko = CHAIN_DICT.get(chain, {}).get('gecko')
@@ -133,7 +133,7 @@ class PoolSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         kw = request.query_params['kw']
 
         data = GeckoAPI.search(kw).get('pools', [])
@@ -154,7 +154,7 @@ class CoinQueryView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         kw = request.query_params['kw']
 
         data = []
@@ -189,7 +189,7 @@ class AddressQueryView(APIView):
     def get(self, request):
         form = forms.AddressQueryForms(request.query_params)
         if not form.is_valid():
-            return Response(dict(error=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(form.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         address = request.query_params['address']
         addr_type = request.query_params.get('type')
         chains = copy.deepcopy(CHAIN_DICT)

@@ -23,7 +23,7 @@ class UserSubscriptionSettings(APIView):
     def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(dict(error=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=list(serializer.errors.values())[0][0]), status=status.HTTP_400_BAD_REQUEST)
         
         old_content = []
         new_content = request.data['content']
@@ -37,7 +37,7 @@ class UserSubscriptionSettings(APIView):
                 old_content = subscription.first().content
                 subscription.update(**request.data)
         except ValidationError as e:
-            return Response(dict(error=e.messages), status=status.HTTP_400_BAD_REQUEST)
+            return Response(dict(detail=e.messages), status=status.HTTP_400_BAD_REQUEST)
         
         if message_type != 3:
             return Response(dict(data=serializer.data), status=status.HTTP_200_OK)
