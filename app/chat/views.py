@@ -23,4 +23,4 @@ class ChatRoomDetailView(generics.RetrieveAPIView):
             chat_room = ChatRoom.objects.create()
             chat_room.members.add(self.request.user, self.receiver)
 
-        return ResponseUtil.success(chat_room)
+        return chat_room
