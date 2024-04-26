@@ -247,7 +247,7 @@ class WalletHandler():
                     name = item.contract_name,
                     decimals = item.contract_decimals,
                     amount = item.balance,
-                    address = item.contract_address.replace('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '0x0000000000000000000000000000000000000000').replace('11111111111111111111111111111111', 'So11111111111111111111111111111111111111112'),
+                    address = item.contract_address.replace('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '0x0000000000000000000000000000000000000000').replace('11111111111111111111111111111111', '0x0000000000000000000000000000000000000000'),
                     priceUsd = item.quote_rate,
                     valueUsd = item.quote,
                     logoUrl = item.logo_url,
@@ -301,8 +301,8 @@ class WalletHandler():
 
             payload = json.dumps(dict(
                 secretKey = private_key,
-                inputMint = input_token,
-                outputMint = output_token,
+                inputMint = input_token.replace('0x0000000000000000000000000000000000000000', 'So11111111111111111111111111111111111111112'),
+                outputMint = output_token.replace('0x0000000000000000000000000000000000000000', 'So11111111111111111111111111111111111111112'),
                 amount = amount,
                 slippageBps = slippageBps,
             ))
