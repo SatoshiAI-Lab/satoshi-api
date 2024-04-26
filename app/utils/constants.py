@@ -44,7 +44,7 @@ DEFAULT_IDS = [
 
 DEFAULT_PLATFORM = 'SOL'
 
-DEFAULT_CHAIN = 'Solana'
+DEFAULT_CHAIN = 'solana'
 
 PLATFORM_LIST = [
     'EVM',

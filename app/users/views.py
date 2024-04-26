@@ -20,6 +20,7 @@ import json
 import os
 import requests
 import copy
+import uuid
 
 from w3.wallet import WalletHandler
 from utils import constants
@@ -33,7 +34,7 @@ class UserRegistrationView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
+            return ResponseUtil.field_error()
         self.perform_create(serializer)
         # headers = self.get_success_headers(serializer.data)
         return ResponseUtil.success(serializer.data)
@@ -72,7 +73,7 @@ class WalletAPIView(APIView):
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in all_chains:
-                    return ResponseUtil.param_error(msg=f'Chain {c} error.')
+                    return ResponseUtil.field_error(msg=f'Chain {c} error.')
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
         wallet_handler = WalletHandler()
@@ -97,20 +98,20 @@ class WalletAPIView(APIView):
         data = request.data
         data['platform'] = data.get('platform', constants.DEFAULT_PLATFORM)
         if data['platform'] not in constants.PLATFORM_LIST:
-            return ResponseUtil.param_error(msg='Platform error.')
+            return ResponseUtil.field_error(msg='Platform error.')
         
         wallet_handler = WalletHandler()
         data['private_key'], data['public_key'], data['address'] = wallet_handler.create_wallet(data['platform'])
         
         if not data['private_key']:
-            ResponseUtil.param_error(msg='Create the private key failed.')
+            ResponseUtil.field_error()
 
         serializer = WalletSerializer(data=data, context={'request': request})
         
         if serializer.is_valid():
             serializer.save()
             return ResponseUtil.success(serializer.data)
-        return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
+        return ResponseUtil.field_error()
 
 
 class ImportPrivateKeyView(APIView):
@@ -122,11 +123,11 @@ class ImportPrivateKeyView(APIView):
         platform = data.get('platform', constants.DEFAULT_PLATFORM)
 
         if platform not in constants.PLATFORM_LIST:
-            return ResponseUtil.param_error(msg='Platform error.')
+            return ResponseUtil.field_error(msg='Platform error.')
 
         if platform == 'EVM':
             if len(private_key) < 64 or len(private_key) > 66:
-                return ResponseUtil.param_error(msg='Import the private key failed.')
+                return ResponseUtil.field_error()
             
             private_key_hex = "0x" + private_key if not private_key.startswith("0x") else private_key
             public_key = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
@@ -134,7 +135,7 @@ class ImportPrivateKeyView(APIView):
             data['address'] = public_key.to_checksum_address()
         elif platform == 'SOL':
             if len(private_key) > 90 or len(private_key) < 85:
-                return ResponseUtil.param_error(msg='Import the private key failed.')
+                return ResponseUtil.field_error()
             
             private_key_bytes = base58.b58decode(private_key)
             signing_key = SigningKey(seed=private_key_bytes[:32])
@@ -147,45 +148,65 @@ class ImportPrivateKeyView(APIView):
             wallet = Wallet.objects.create(**serializer.validated_data, user=request.user)
             return ResponseUtil.success(WalletSerializer(wallet).data)
         else:
-            return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
+            return ResponseUtil.field_error()
 
 
 class ExportPrivateKeyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         if wallet.user == request.user:
             return ResponseUtil.success(data={"private_key": wallet.private_key})
         else:
-            return ResponseUtil.param_error(msg='You do not have permission to view this private key.')
+            return ResponseUtil.field_error()
 
 
 class UpdateWalletNameView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         obj = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.query_params.get('name', ''))
         res = True if obj.exists() else False
         return ResponseUtil.success(data={"result": res})
 
     def patch(self, request, pk):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+
         obj = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.data.get('name', ''))
         if obj.exists():
-            return ResponseUtil.data_exist(msg='The wallet name already exists.')
+            return ResponseUtil.data_exist()
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         serializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return ResponseUtil.success(serializer.data)
         else:
-            return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
+            return ResponseUtil.field_error()
         
 
 class DeleteWalletView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         wallet.delete()
         return ResponseUtil.success()
@@ -203,7 +224,7 @@ class WalletBalanceAPIView(APIView):
             chains = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in all_chains:
-                    return ResponseUtil.param_error(msg=f'Chain {c} error.')
+                    return ResponseUtil.field_error(msg=f'Chain error.')
         wallet_handler = WalletHandler()
         balance_for_account = wallet_handler.multi_get_balances([address], chains)
         return ResponseUtil.success(data={k:v[address] if len(v) else v for k, v in balance_for_account.items()})
@@ -215,7 +236,7 @@ class UserSelectView(APIView):
     def post(self, request):
         form = forms.UserSelectForms(request.data)
         if not form.is_valid():
-            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         ids = form.data['ids']
         select_status = int(request.data['status'])
         
@@ -251,16 +272,16 @@ class AccountTypeView(APIView):
     def get(self, request):
         chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
-            return ResponseUtil.param_error(msg='Chain error.')
+            return ResponseUtil.field_error(msg='Chain error.')
         
-        if chain == 'Solana':
+        if chain == 'solana':
             target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
             params = request.GET.dict()
             headers = dict(request.headers)
 
             response = requests.get(target_url, params=params, headers=headers)
 
-            return ResponseUtil.success(data=json.loads(response.content))
+            return ResponseUtil.success(data=json.loads(response.content).get('data', {}))
         else:
             address = request.query_params.get('address', '')
             account_type = WalletHandler().account_type(address, chain)
@@ -273,7 +294,7 @@ class HashStatusAPIView(APIView):
     def get(self, request):
         chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
-            return ResponseUtil.param_error(msg='Chain error.')
+            return ResponseUtil.field_error(msg='Chain error.')
         hash_tx = request.query_params.get('hash_tx')
         
         obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
@@ -296,9 +317,14 @@ class WalletTransactionView(APIView):
 
     @transaction.atomic
     def post(self, request, pk):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         form = forms.WalletTransactionForms(request.data)
         if not form.is_valid():
-            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = form.data
         chain=form_data.get('chain', constants.DEFAULT_CHAIN)
         
@@ -307,7 +333,7 @@ class WalletTransactionView(APIView):
         wallet_handler = WalletHandler()
         transaction_hash = wallet_handler.token_transaction(chain, wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
         if not transaction_hash:
-            return ResponseUtil.web3_error(msg='No hash, transaction failed.')
+            return ResponseUtil.web3_error()
         
         log_obj = WalletLog.objects.create(
             chain=chain,
@@ -328,9 +354,14 @@ class CreateTokenView(APIView):
 
     @transaction.atomic
     def post(self, request, pk, *args, **kwargs):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         form = forms.CreateTokenForms(request.data)
         if not form.is_valid():
-            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = form.data
         chain=form_data.get('chain', constants.DEFAULT_CHAIN)
         
@@ -342,7 +373,7 @@ class CreateTokenView(APIView):
         amount = form_data.get('amount', 0)
         created_hash, address = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], form_data.get('desc', ''), str(form_data['decimals']), str(amount))
         if not created_hash:
-            return ResponseUtil.web3_error(msg='No hash, transaction failed.')
+            return ResponseUtil.web3_error()
         log_obj = WalletLog.objects.create(
             chain=chain,
             input_token=address,
@@ -362,11 +393,16 @@ class MintTokenView(APIView):
 
     @transaction.atomic
     def post(self, request, pk, *args, **kwargs):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+        
         form = forms.MintTokenForms(request.data)
         if not form.is_valid():
-            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = form.data
-        chain=form_data.get('chain', 'Solana')
+        chain=form_data.get('chain', 'solana')
         created_hash = form_data['created_hash']
 
         created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
@@ -384,7 +420,7 @@ class MintTokenView(APIView):
         # mint token
         mint_hash = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
         if not mint_hash:
-            return ResponseUtil.web3_error(msg='No hash, transaction failed.')
+            return ResponseUtil.web3_error()
         
         log_obj = WalletLog.objects.create(
             chain=chain,

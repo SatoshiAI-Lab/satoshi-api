@@ -27,24 +27,24 @@ class ResponseUtil():
         return resp(status.HTTP_200_OK, msg, data)
     
     @staticmethod
-    def param_error(data=None, msg='This field is required.'):
+    def miss_field(data=None, msg='This field is required.'):
         return resp(status.HTTP_400_BAD_REQUEST, msg, data)
 
     @staticmethod
-    def param_error(data=None, msg='Param error.'):
+    def field_error(data=None, msg='This field error.'):
         return resp(status.HTTP_400_BAD_REQUEST, msg, data)
     
     @staticmethod
-    def no_data(data=None, msg='Data does not exist.'):
+    def no_data(data=None, msg='Record does not exist.'):
+        return resp(status.HTTP_400_BAD_REQUEST, msg, data)
+    
+    @staticmethod
+    def data_exist(data=None, msg='Record already exists.'):
         return resp(status.HTTP_400_BAD_REQUEST, msg, data)
 
     @staticmethod
     def request_timeout(data=None, msg='Request timeout.'):
         return resp(status.HTTP_408_REQUEST_TIMEOUT, msg, data)
-
-    @staticmethod
-    def data_exist(data=None, msg='Data already exists.'):
-        return resp(status.HTTP_409_CONFLICT, msg, data)
     
     @staticmethod
     def web3_error(data=None, msg='Web3 request error.'):

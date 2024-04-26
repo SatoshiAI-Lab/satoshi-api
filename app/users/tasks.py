@@ -18,12 +18,12 @@ logger = get_task_logger(__name__)
 def check_solana_hash():
     ten_minutes_ago = timezone.now() - timedelta(minutes=3)
     WalletLog.objects.filter(status = 0, added_at__lt=ten_minutes_ago).update(status = 2)
-    objs = WalletLog.objects.filter(chain='Solana', status = 0, added_at__gte=ten_minutes_ago)
+    objs = WalletLog.objects.filter(chain='solana', status = 0, added_at__gte=ten_minutes_ago)
     if not objs:
         return
 
     wallet_handler = WalletHandler()
-    check_res = wallet_handler.check_hash('Solana', [dict(trxHash=obj.hash_tx, trxTimestamp=int(obj.added_at.timestamp())) for obj in objs])
+    check_res = wallet_handler.check_hash('solana', [dict(trxHash=obj.hash_tx, trxTimestamp=int(obj.added_at.timestamp())) for obj in objs])
     if not check_res:
         return
     for index, res in enumerate(check_res):

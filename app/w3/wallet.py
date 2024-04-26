@@ -257,7 +257,7 @@ class WalletHandler():
         return json_data
     
     def update_token_info(self, chain, items):
-        if chain == 'Solana':
+        if chain == 'solana':
             addresses = []
             # for item in items:
             #     if item.contract_name and item.contract_ticker_symbol:
@@ -296,7 +296,7 @@ class WalletHandler():
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
         hash_tx = None
-        if chain == 'Solana':
+        if chain == 'solana':
             url = f"{self.sol_domain}/swap"
 
             payload = json.dumps(dict(
@@ -349,7 +349,7 @@ class WalletHandler():
     
     def check_hash(self, chain, data_list):
         data = []
-        if chain == 'Solana':
+        if chain == 'solana':
             url = f"{self.sol_domain}/transaction/is_success"
 
             payload = json.dumps(data_list)
@@ -383,7 +383,7 @@ class WalletHandler():
     
     def get_address_from_hash(self, chain, hash_tx):
         data = None
-        if chain == 'Solana':
+        if chain == 'solana':
             url = f"{self.sol_domain}/token/address?create_trx_hash={hash_tx}"
 
             payload = {}
@@ -403,7 +403,7 @@ class WalletHandler():
     def create_token(self, chain, private_key, name, symbol, desc, decimals, amount):
         hash_tx = None
         address = None
-        if chain == 'Solana':
+        if chain == 'solana':
             url = f"{self.sol_domain}/token/create"
 
             payload = json.dumps(dict(
@@ -454,7 +454,7 @@ class WalletHandler():
     
     def mint_token(self, chain, private_key, create_hash, mint_amount):
         hash_tx = None
-        if chain == 'Solana':
+        if chain == 'solana':
             url = f"{self.sol_domain}/token/mint"
 
             payload = json.dumps(dict(

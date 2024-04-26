@@ -24,7 +24,7 @@ class UserSubscriptionSettings(APIView):
     def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
-            return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
+            return ResponseUtil.field_error()
         
         old_content = []
         new_content = request.data['content']
@@ -38,7 +38,7 @@ class UserSubscriptionSettings(APIView):
                 old_content = subscription.first().content
                 subscription.update(**request.data)
         except ValidationError as e:
-            return ResponseUtil.param_error(msg=e.messages)
+            return ResponseUtil.field_error(msg=e.messages)
         
         if message_type != 3:
             return ResponseUtil.success(data=serializer.data)
