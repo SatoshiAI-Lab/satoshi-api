@@ -172,6 +172,16 @@ CHAIN_DICT = {
         'rpc': 'https://rpc-mainnet-1.bevm.io',
         'tx_url': 'https://scan-mainnet.bevm.io/tx/',
     },
+    "scroll": {
+        'platform': 'EVM',
+        'id': '534352',
+        'cqt': 'scroll-mainnet',
+        'gecko': 'scroll',
+        'dex_tools': 'scroll',
+        'ave': 'scroll',
+        'rpc': 'https://rpc.ankr.com/scroll',
+        'tx_url': 'https://scrollscan.com/tx/',
+    },
 }
 
 CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT if CHAIN_DICT[c]['cqt']}
