@@ -9,7 +9,8 @@ from users.models import UserSubscription
 from .models import TwitterUser, Exchange, TradeAddress
 from .serializers import UserSubscriptionSerializer
 from rest_framework.permissions import IsAuthenticated
-from utils import constants, response_util
+from utils import constants
+from utils.response_util import ResponseUtil
 
 import requests
 import json
@@ -23,7 +24,7 @@ class UserSubscriptionSettings(APIView):
     def post(self, request, *args, **kwargs):   
         serializer = UserSubscriptionSerializer(data=request.data)
         if not serializer.is_valid():
-            return response_util.param_error(msg=list(serializer.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(serializer.errors.values())[0][0])
         
         old_content = []
         new_content = request.data['content']
@@ -37,10 +38,10 @@ class UserSubscriptionSettings(APIView):
                 old_content = subscription.first().content
                 subscription.update(**request.data)
         except ValidationError as e:
-            return response_util.param_error(msg=e.messages)
+            return ResponseUtil.param_error(msg=e.messages)
         
         if message_type != 3:
-            return response_util.success(data=serializer.data)
+            return ResponseUtil.success(data=serializer.data)
         else:
             for c in new_content:
                 if str(c['address']).startswith('0x') and len(str(c['address'])) == 42:
@@ -146,7 +147,7 @@ class UserSubscriptionSettings(APIView):
                     timeout=15,
                 )
 
-        return response_util.success(data=serializer.data)
+        return ResponseUtil.success(data=serializer.data)
 
 
 class UserSubscriptionList(APIView):
@@ -177,4 +178,4 @@ class UserSubscriptionList(APIView):
             trade = dict(message_type=3, content=my_subscribed.get('trade', [])),
             pool = dict(message_type=4, content=pool_data),
         )
-        return response_util.success(data=data)    
+        return ResponseUtil.success(data=data)    

@@ -15,7 +15,10 @@ import os
 from urllib.parse import urljoin
 from users import models as user_models
 from users.permissions import OptionalAuthentication
-from utils import constants, response_util
+
+from utils import constants
+from utils.response_util import ResponseUtil
+
 from w3.dex import GeckoAPI, DexTools, AveAPI
 from w3.wallet import WalletHandler
 
@@ -27,7 +30,7 @@ class CoinSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         reserved_chars = r'''?&|!{}[]()^~*:\\"'+-'''
@@ -66,7 +69,7 @@ class CoinSearchView(APIView):
             except:
                 continue
         data['coin'] = ser_data[:num]
-        return response_util.success(data=data)
+        return ResponseUtil.success(data=data)
 
 
 class CoinListView(APIView):
@@ -76,7 +79,7 @@ class CoinListView(APIView):
     def post(self, request):
         form = forms.CoinListForms(request.data)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
 
         uid = request.user.id
         if uid:
@@ -84,18 +87,18 @@ class CoinListView(APIView):
         else:
             ids = request.data.get('ids')
         if not ids:
-            return response_util.success(data=dict(list=[]))
+            return ResponseUtil.success(data=dict(list=[]))
 
         if isinstance(ids, str):
             try:
                 ids = json.loads(ids)
             except:
-                return response_util.param_error(msg=list(form.errors.values())[0][0])
+                return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         token_ids = [i['id'] for i in ids if i['type'] == 1]
         t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
         token_data = serializers.CoinListSerializer(t_models, many=True).data
 
-        return response_util.success(data=dict(list=token_data))
+        return ResponseUtil.success(data=dict(list=token_data))
     
 
 class CoinInfoView(APIView):
@@ -105,11 +108,11 @@ class CoinInfoView(APIView):
     def get(self, request):
         form = forms.CoinInfoForms(request.query_params)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         address = request.query_params['address']
         chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
-            return response_util.param_error(msg='Chain error.')
+            return ResponseUtil.param_error(msg='Chain error.')
 
         data = dict()
         chain_gecko = constants.CHAIN_DICT.get(chain, {}).get('gecko')
@@ -118,13 +121,13 @@ class CoinInfoView(APIView):
             gecko_data = GeckoAPI.token_info(chain_gecko, address)
             data = dict(data, **gecko_data)
         else:
-            return Response(dict(data=data), status=status.HTTP_200_OK)
+            return ResponseUtil.success(data=data)
         if chain_dex_tools:
             dex_tools_data = DexTools.token_info(chain_dex_tools, address)
             data['holders'] = dex_tools_data.get('holders')
         else:
             data['holders'] = None
-        return response_util.success(data=data)
+        return ResponseUtil.success(data=data)
     
 
 class PoolSearchView(APIView):
@@ -134,7 +137,7 @@ class PoolSearchView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         data = GeckoAPI.search(kw).get('pools', [])
@@ -145,7 +148,7 @@ class PoolSearchView(APIView):
                 continue
             d['network'] = dict(chain=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
         
-        return response_util.success(data=data)
+        return ResponseUtil.success(data=data)
     
 
 class CoinQueryView(APIView):
@@ -155,7 +158,7 @@ class CoinQueryView(APIView):
     def get(self, request):
         form = forms.CoinSearchForms(request.query_params)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         kw = request.query_params['kw']
 
         data = []
@@ -180,7 +183,7 @@ class CoinQueryView(APIView):
                 coin_data['is_supported'] = True
             data.append(coin_data)
         
-        return response_util.success(data=data)
+        return ResponseUtil.success(data=data)
     
 
 class AddressQueryView(APIView):
@@ -190,7 +193,7 @@ class AddressQueryView(APIView):
     def get(self, request):
         form = forms.AddressQueryForms(request.query_params)
         if not form.is_valid():
-            return response_util.param_error(msg=list(form.errors.values())[0][0])
+            return ResponseUtil.param_error(msg=list(form.errors.values())[0][0])
         address = request.query_params['address']
         addr_type = request.query_params.get('type')
         chains = copy.deepcopy(constants.CHAIN_DICT)
@@ -231,4 +234,4 @@ class AddressQueryView(APIView):
             balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
             account_data = {k:v[address] if len(v) else v for k, v in balance_for_account.items()}
 
-        return response_util.success(data=dict(tokens=token_data, accounts=account_data))
+        return ResponseUtil.success(data=dict(tokens=token_data, accounts=account_data))

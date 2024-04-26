@@ -35,7 +35,7 @@ app.conf.update(
     CELERYBEAT_SCHEDULE={
         'withdraw-check-task': {
             'task': 'users.tasks.check_solana_hash',
-            'schedule':  datetime.timedelta(seconds=10),
+            'schedule':  datetime.timedelta(seconds=60),
             'args': ()
         },
     }

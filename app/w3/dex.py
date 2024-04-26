@@ -87,14 +87,14 @@ class GeckoAPI():
 class AveAPI():
     domain = os.getenv('AVE_DOMAIN')
 
-    @classmethod
-    def get_auth(cls):
+    @staticmethod
+    def get_auth():
         ave_cache_key = f'satoshi:ave_auth'  # 重复检测
         ave_auth = cache.get(ave_cache_key)
         if not ave_auth:
             ave_auth = subscribe_models.Config.objects.filter(id=1).first().ave_auth
         else:
-            cache.set(ave_cache_key, 1, 300)
+            cache.set(ave_cache_key, 1, 600)
         return ave_auth
 
     @classmethod
