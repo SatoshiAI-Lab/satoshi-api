@@ -166,56 +166,11 @@ class WalletHandler():
                 address = item['token_address'],
                 priceUsd = None,
                 valueUsd = None,
+                price_usd = None,
+                value_usd = None,
+                price_change_24h = None,
                 logoUrl = None,
             ))
-        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
-        return json_data
-    
-    def get_balances_from_helius(self, chain, address):
-        url = os.getenv('HELIUS_DOMAIN')
-        payload = json.dumps({
-        "jsonrpc": "2.0",
-        "id": "my-id",
-        "method": "searchAssets",
-        "params": {
-            "ownerAddress": address,
-            "displayOptions": {
-            "showNativeBalance": True
-            },
-            "tokenType": "fungible"
-        }
-        })
-        headers = {
-        'Content-Type': 'application/json',
-        }
-        try:
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
-            items = json.loads(response.text)['result']['items']
-        except Exception as e:
-            logger.error(f'Helius error: {e}')
-            return
-        tokens = []
-        value = 0
-        chain = dict(
-            id = str(constants.CHAIN_DICT[chain]['id']),
-            name = chain,
-            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
-        )
-        for item in items:
-            meta = item['content']['metadata']
-            token_info = item['token_info']
-            price_info = token_info.get('price_info', {})
-            tokens.append(dict(
-                symbol = meta['symbol'],
-                name = meta['name'],
-                decimals = token_info['decimals'],
-                amount = token_info['balance'],
-                address = item['id'],
-                priceUsd = price_info.get('price_per_token', 0),
-                valueUsd = price_info.get('total_price', 0),
-                logoUrl = None,
-            ))
-            value += price_info.get('total_price', 0)
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
@@ -242,14 +197,18 @@ class WalletHandler():
                 logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
             )
             for item in items:
+                address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item.contract_address)
                 tokens.append(dict(
                     symbol = item.contract_ticker_symbol,
                     name = item.contract_name,
                     decimals = item.contract_decimals,
                     amount = item.balance,
-                    address = item.contract_address.replace('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', '0x0000000000000000000000000000000000000000').replace('11111111111111111111111111111111', '0x0000000000000000000000000000000000000000'),
+                    address = address,
                     priceUsd = item.quote_rate,
                     valueUsd = item.quote,
+                    price_usd = item.quote_rate,
+                    value_usd = item.quote,
+                    price_change_24h = round((item.quote_rate-item.quote_rate_24h)/item.quote_rate_24h*100, 4) if item.quote_rate and item.quote_rate_24h else None,
                     logoUrl = item.logo_url,
                 ))
                 value += item.quote or 0
@@ -285,7 +244,7 @@ class WalletHandler():
                 try:
                     if item.contract_name and item.contract_ticker_symbol:
                         continue
-                    if item.address == '0x0000000000000000000000000000000000000000':
+                    if item.address == constants.ZERO_ADDRESS:
                         continue
                     contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=constants.ERC20_ABI)
                     item.contract_name = contract.functions.name().call()
@@ -301,8 +260,8 @@ class WalletHandler():
 
             payload = json.dumps(dict(
                 secretKey = private_key,
-                inputMint = input_token.replace('0x0000000000000000000000000000000000000000', 'So11111111111111111111111111111111111111112'),
-                outputMint = output_token.replace('0x0000000000000000000000000000000000000000', 'So11111111111111111111111111111111111111112'),
+                inputMint = input_token.replace(constants.ZERO_ADDRESS, constants.SOL_ADDRESS),
+                outputMint = output_token.replace(constants.ZERO_ADDRESS, constants.SOL_ADDRESS),
                 amount = amount,
                 slippageBps = slippageBps,
             ))
@@ -320,7 +279,7 @@ class WalletHandler():
             data = json.loads(response.text)
             hash_tx = data.get('data', {}).get('trx_hash')
         else:
-            zero_address = '0x0000000000000000000000000000000000000000'
+            zero_address = constants.ZERO_ADDRESS
             if input_token == zero_address and output_token == zero_address:
                 return
             url = f"{self.evm_domain}/evm/swap"
