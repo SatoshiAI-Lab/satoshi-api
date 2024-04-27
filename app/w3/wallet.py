@@ -381,6 +381,25 @@ class WalletHandler():
             data = json.loads(response.text).get('data', [])
         return data
     
+    def multi_check_hash(self, hash_data):
+        data = []
+
+        url = f"{self.evm_domain}/evm/transaction/is_success/batch"
+
+        payload = json.dumps(hash_data)
+        headers = {
+        'Content-Type': 'application/json',
+        }
+        try:
+            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+        except Exception as e:
+            logger.error(f'Request timeout: {e}')
+            return
+        if response.status_code != 200:
+            return data
+        data = json.loads(response.text).get('data', {})
+        return data
+    
     def get_address_from_hash(self, chain, hash_tx):
         data = None
         if chain == 'solana':
