@@ -15,7 +15,7 @@ logger = get_task_logger(__name__)
 
 
 @app.task()
-def check_solana_hash():
+def check_hash():
     minutes_ago = timezone.now() - timedelta(minutes=3)
     WalletLog.objects.filter(status = 0, added_at__lt=minutes_ago).update(status = 2)
     objs = WalletLog.objects.filter(chain='solana', status = 0, added_at__gte=minutes_ago)
@@ -31,7 +31,7 @@ def check_solana_hash():
             objs[index].status = 1
             objs[index].save()
             break
-        elif res.get('isPending') == False and res.get('isSuccess') == True: # failed
+        elif res.get('isPending') == False and res.get('isSuccess') == False: # failed
             objs[index].status = 3
             objs[index].save()
 
