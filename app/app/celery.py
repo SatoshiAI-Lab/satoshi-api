@@ -33,10 +33,10 @@ app.conf.update(
     CELERY_TASK_SERIALIZER="json",
     CELERY_RESULT_SERIALIZER="json",
     CELERYBEAT_SCHEDULE={
-        'withdraw-check-task': {
-            'task': 'users.tasks.check_solana_hash',
-            'schedule':  datetime.timedelta(seconds=60),
-            'args': ()
-        },
+        # 'withdraw-check-task': {
+        #     'task': 'users.tasks.check_solana_hash',
+        #     'schedule':  datetime.timedelta(seconds=60),
+        #     'args': ()
+        # },
     }
 )

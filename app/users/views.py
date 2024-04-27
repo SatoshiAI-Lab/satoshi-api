@@ -307,8 +307,11 @@ class HashStatusAPIView(APIView):
                 check_res = check_res[0]
                 if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
                     hash_status = 1
-                elif check_res.get('isPending') == False and check_res.get('isSuccess') == True: # failed
+                elif check_res.get('isPending') == False and check_res.get('isSuccess') == False: # failed
                     hash_status = 3
+        if obj.status != hash_status:
+            obj.status = hash_status
+            obj.save()
         return ResponseUtil.success(data=dict(status=hash_status, created_at=created_at))
     
 
@@ -327,6 +330,9 @@ class WalletTransactionView(APIView):
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = form.data
         chain=form_data.get('chain', constants.DEFAULT_CHAIN)
+
+        if chain not in constants.CHAIN_DICT:
+            return ResponseUtil.field_error(msg='Chain error.')
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
@@ -364,6 +370,9 @@ class CreateTokenView(APIView):
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = form.data
         chain=form_data.get('chain', constants.DEFAULT_CHAIN)
+
+        if chain not in constants.CHAIN_DICT:
+            return ResponseUtil.field_error(msg='Chain error.')
         
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
 
@@ -404,6 +413,9 @@ class MintTokenView(APIView):
         form_data = form.data
         chain=form_data.get('chain', 'solana')
         created_hash = form_data['created_hash']
+
+        if chain not in constants.CHAIN_DICT:
+            return ResponseUtil.field_error(msg='Chain error.')
 
         created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
 
