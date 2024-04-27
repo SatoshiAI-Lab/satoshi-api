@@ -1,6 +1,15 @@
+import base58
+import json
+import os
+import requests
+import copy
+import uuid
+import asyncio
+
+from eth_keys import keys
+from nacl.signing import SigningKey
+
 from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework import status
 from .models import User, Wallet, WalletLog
 from .serializers import *
 from django.shortcuts import get_object_or_404
@@ -10,17 +19,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from eth_keys import keys
-from nacl.signing import SigningKey
-import base58
-import json
-import os
-import requests
-import copy
-import uuid
 
 from w3.wallet import WalletHandler
 from utils import constants
@@ -77,8 +76,8 @@ class WalletAPIView(APIView):
         wallets = Wallet.objects.filter(user=request.user)
         serializer = WalletListSerializer(wallets, many=True)
         wallet_handler = WalletHandler()
-        balance_for_account = wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains)
 
+        balance_for_account = asyncio.run(wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains))
         data = dict()
         for k, v in balance_for_account.items():
             res = []
@@ -226,7 +225,7 @@ class WalletBalanceAPIView(APIView):
                 if c not in all_chains:
                     return ResponseUtil.field_error(msg=f'Chain error.')
         wallet_handler = WalletHandler()
-        balance_for_account = wallet_handler.multi_get_balances([address], chains)
+        balance_for_account = asyncio.run(wallet_handler.multi_get_balances([address], chains))
         return ResponseUtil.success(data={k:v[address] if len(v) else v for k, v in balance_for_account.items()})
 
 

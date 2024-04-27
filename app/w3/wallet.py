@@ -8,11 +8,11 @@ from web3 import Web3
 import re
 from base58 import b58decode
 
-from covalent import CovalentClient
+import aiohttp
+import asyncio
+
 from concurrent import futures
 from utils import constants
-
-from utils.fetch import MultiFetch
 
 import logging
 
@@ -105,140 +105,134 @@ class WalletHandler():
             publicKey = publicKey.to_hex()
         return secretKey, publicKey, address
     
-    def multi_get_balances(self, address_list, chain_list):           
-        with futures.ThreadPoolExecutor() as executor:
-            future_to_chain_address = {executor.submit(self.get_balances, chain, address): (chain, address) for address in address_list for chain in chain_list if self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']}
+    async def multi_get_balances(self, address_list, chain_list):
+        tasks = []
+        async with aiohttp.ClientSession() as session:
+            for address in address_list:
+                for chain in chain_list:
+                    if self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
+                        tasks.append(self.get_balances(chain, address))
+
             results = {}
-            for future in futures.as_completed(future_to_chain_address):
-                chain, address = future_to_chain_address[future]
-                try:
-                    data = future.result()
-                    if chain not in results:
-                        results[chain] = {}
-                    results[chain][address] = data
-                except Exception as e:
-                    logging.error(f"Error fetching balances for chain '{chain}' and address '{address}': {str(e)}")
+            for future in asyncio.as_completed(tasks):
+                chain, address, data = await future
+                if chain not in results:
+                    results[chain] = {}
+                results[chain][address] = data
+
         return results
-    
-    def get_balances(self, chain, address):   
-        json_data = None
-        if chain == 'Merlin':
-            json_data = self.get_balances_from_merlin(chain, address)
-        if not json_data:
-            json_data = self.get_balances_from_cqt(chain, address)
-        if not json_data:
-            chain = dict(
-                id = str(constants.CHAIN_DICT[chain]['id']),
-                name = chain,
-                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
-            )
-            json_data = dict(address=address, value=0, tokens=[], chain=chain)
-        return json_data
-    
-    def get_balances_from_merlin(self, chain, address):
-        json_data = {}
-        url = os.getenv('MERLIN_DOMAIN')
-        payload = {}
-        headers = {
-        'Content-Type': 'application/json',
-        }
-        try:
-            response = requests.request("GET", f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, data=payload, timeout=15)
-            items = json.loads(response.text).get('result', {}).get('data', {}).get('json', [])
-        except Exception as e:
-            logger.error(f'Request timeout: {e}')
-            return
-        if response.status_code != 200:
-            return json_data
-        tokens = []
-        value = None
-        chain = dict(
+
+    async def get_balances(self, chain, address):   
+        chain_data = dict(
             id = str(constants.CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
-        for item in items:
-            tokens.append(dict(
-                symbol = item['symbol'],
-                name = item['name'],
-                decimals = item['decimals'],
-                amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
-                address = item['token_address'],
-                priceUsd = None,
-                valueUsd = None,
-                price_usd = None,
-                value_usd = None,
-                price_change_24h = None,
-                logoUrl = None,
-            ))
-        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
-        return json_data
+        json_data = dict(address=address, value=0, tokens=[], chain=chain_data)
+        if chain == 'Merlin':
+            res = await self.get_balances_from_merlin(chain, address)
+        else:
+            res = await self.get_balances_from_cqt(chain, address)
+        if res:
+            json_data = res
+        return (chain, address, json_data)
     
-    def get_balances_from_cqt(self, chain, address):
+    async def get_token_balances_from_cqt(self, chain, address):
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(
+                    f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/",
+                    headers={
+                        "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
+                        "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
+                    }
+                ) as response:
+                    if response.status != 200:
+                        return
+                    return await response.json()
+            except Exception as e:
+                logging.error(f"Error fetching balances for chain '{chain}': {str(e)}")
+                return
+            
+    async def get_balances_from_cqt(self, chain, address):
         network_name = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
-        
-        c = CovalentClient(os.getenv('CQT_KEY'))
-        b = c.balance_service.get_token_balances_for_wallet_address(network_name, address)
-        if b.error:
-            logger.error(str(b.error))
+        res = await self.get_token_balances_from_cqt(network_name, address)
+        if not res:
             return
-        else:
-            chain_id = b.data.chain_id
-            chain_name = b.data.chain_name
-            items = b.data.items
-            items = self.update_token_info(chain, b.data.items)
-            tokens = []
-            value = 0
-            chain = dict(
-                id = str(chain_id),
-                name = constants.CQT_CHAIN_DICT[chain_name],
-                logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
-            )
-            for item in items:
-                address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item.contract_address)
-                tokens.append(dict(
-                    symbol = item.contract_ticker_symbol,
-                    name = item.contract_name,
-                    decimals = item.contract_decimals,
-                    amount = item.balance,
-                    address = address,
-                    priceUsd = item.quote_rate,
-                    valueUsd = item.quote,
-                    price_usd = item.quote_rate,
-                    value_usd = item.quote,
-                    price_change_24h = round((item.quote_rate-item.quote_rate_24h)/item.quote_rate_24h*100, 4) if item.quote_rate and item.quote_rate_24h else None,
-                    logoUrl = item.logo_url,
-                ))
-                value += item.quote or 0
-            json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        chain_id = res['data']['chain_id']
+        chain_name = res['data']['chain_name']
+        items = res['data']['items']
+        # items = self.update_token_info(chain, b.data.items)
+        tokens = []
+        value = 0
+        chain_data = dict(
+            id = str(chain_id),
+            name = constants.CQT_CHAIN_DICT[chain_name],
+            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
+        )
+        for item in items:
+            address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item['contract_address'])
+            price_usd = item.get('quote_rate')
+            price_usd_24h = item.get('quote_rate_24h')
+            tokens.append(dict(
+                symbol = item['contract_ticker_symbol'],
+                name = item['contract_name'],
+                decimals = item['contract_decimals'],
+                amount = item['balance'],
+                address = address,
+                priceUsd = price_usd,
+                valueUsd = item['quote'],
+                price_usd = price_usd,
+                value_usd = item['quote'],
+                price_change_24h = round((price_usd-price_usd_24h)/price_usd_24h*100, 4) if price_usd and price_usd_24h else None,
+                logoUrl = item['logo_url'],
+            ))
+            value += item.get('quote') or 0
+        json_data = dict(address=address, value=value, tokens=tokens, chain=chain_data)
+        return json_data
+
+    async def get_balances_from_merlin(self, chain, address):
+        url = os.getenv('MERLIN_DOMAIN')
+        json_data = {}
+        headers = {'Content-Type': 'application/json'}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=15) as response:
+                    if response.status != 200:
+                        return json_data
+                    data = await response.json()
+                    items = data.get('result', {}).get('data', {}).get('json', [])
+                    tokens = []
+                    value = None
+                    chain = dict(
+                        id = str(constants.CHAIN_DICT[chain]['id']),
+                        name = chain,
+                        logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+                    )
+                    for item in items:
+                        tokens.append(dict(
+                            symbol = item['symbol'],
+                            name = item['name'],
+                            decimals = item['decimals'],
+                            amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
+                            address = item['token_address'],
+                            priceUsd = None,
+                            valueUsd = None,
+                            price_usd = None,
+                            value_usd = None,
+                            price_change_24h = None,
+                            logoUrl = None,
+                        ))
+                    json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        except Exception as e:
+            logger.error(f'Request timeout: {e}')
+            return
         return json_data
     
     def update_token_info(self, chain, items):
-        if chain == 'solana':
-            addresses = []
-            # for item in items:
-            #     if item.contract_name and item.contract_ticker_symbol:
-            #         continue
-            #     addresses.append(item.contract_address)
-
-                # item.contract_name = contract.functions.name().call()
-                # item.contract_ticker_symbol = contract.functions.symbol().call()     
-
-            # headers = {
-            # 'accept': 'application/json',
-            # 'x-api-key': os.getenv('SHYFT_KEY')
-            # }
-            # token_dict = MultiFetch.fetch_multiple_urls(headers, [f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={a}" for a in addresses])
-            # for item in items:
-            #     res = token_dict.get(f"{os.getenv('SHYFT_DOMAIN')}/token/get_info?network=mainnet-beta&token_address={item.contract_address}")
-            #     if not res:
-            #         continue
-            #     data = json.loads(res).get('result', {})
-            #     item.contract_name = data.get('name')
-            #     item.contract_ticker_symbol = data.get('symbol')
-        else:
+        if chain != 'solana':
             w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
             for item in items:
                 try:

@@ -1,5 +1,6 @@
 import json
 import copy
+import asyncio
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -231,7 +232,7 @@ class AddressQueryView(APIView):
             address_type_res = wallet_handler.multi_account_type_exclude_token(address, excluded_chains)
 
             chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
-            balance_for_account = wallet_handler.multi_get_balances([address], chains_for_account)
+            balance_for_account = asyncio.run(wallet_handler.multi_get_balances([address], chains_for_account))
             account_data = {k:v[address] if len(v) else v for k, v in balance_for_account.items()}
 
         return ResponseUtil.success(data=dict(tokens=token_data, accounts=account_data))
