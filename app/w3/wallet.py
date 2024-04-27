@@ -25,7 +25,7 @@ class WalletHandler():
         self.sol_domain = os.getenv('WEB3_SOL_API')
         self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
 
-    def identify_platform(self, address):
+    async def identify_platform(self, address):
         if re.match(r'^0x[a-fA-F0-9]{40}$', address):
             return 'EVM'
         try:
@@ -34,7 +34,7 @@ class WalletHandler():
                 return 'SOL'
         except ValueError:
             pass
-        return ''
+        return ""
 
     @classmethod
     def account_type(cls, address, chain):
@@ -110,7 +110,7 @@ class WalletHandler():
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
-                    if self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
+                    if await self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
                         tasks.append(self.get_balances(chain, address))
 
             results = {}
@@ -129,7 +129,7 @@ class WalletHandler():
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
         )
         json_data = dict(address=address, value=0, tokens=[], chain=chain_data)
-        if chain == 'Merlin':
+        if chain == 'merlin':
             res = await self.get_balances_from_merlin(chain, address)
         else:
             res = await self.get_balances_from_cqt(chain, address)

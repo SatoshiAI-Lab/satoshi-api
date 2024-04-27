@@ -165,6 +165,9 @@ class CoinQueryView(APIView):
         data = []
         ave_data = AveAPI.search(kw)
         for d in ave_data:
+            holders = d.get('holders')
+            if holders and holders < 100:
+                continue
             coin_data = dict(
                 logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
                 address = d['token'],
@@ -173,6 +176,8 @@ class CoinQueryView(APIView):
                 decimals = d.get('decimal'),
                 price_usd = d.get('current_price_usd'),
                 price_change = d.get('price_change'),
+                price_change_24h = d.get('price_change'),
+                holders = holders,
             )
             chain = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
             if not chain:
