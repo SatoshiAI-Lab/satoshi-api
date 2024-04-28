@@ -60,28 +60,34 @@ class WalletHandler():
             return 'user'
         
     @classmethod
-    def account_type_exclude_token(cls, address, chain):
-        w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
+    async def account_type_exclude_token(cls, address, chain, session):
+        rpc_url = constants.CHAIN_DICT[chain]['rpc']
 
-        address = Web3.to_checksum_address(address)
-        if w3.eth.get_code(address):
-            return 'unknown'
-        else:
-            return 'user'
-        
-    def multi_account_type_exclude_token(self, address, chain_list):
-        with futures.ThreadPoolExecutor() as executor:
-            future_to_chain = {executor.submit(self.account_type_exclude_token, address, chain): chain for chain in chain_list}
-            results = {}
-            for future in futures.as_completed(future_to_chain):
-                chain = future_to_chain[future]
-                try:
-                    data = future.result()
-                    if chain not in results:
-                        results[chain] = {}
-                    results[chain] = data
-                except Exception as e:
-                    logging.error(f"Error query account type for chain '{chain}': {str(e)}")
+        payload = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "eth_getCode",
+            "params": [address, "latest"],
+            "id": 1,
+        })
+
+        async with session.post(rpc_url, data=payload, headers={"Content-Type": "application/json"}) as response:
+            if response.status == 200:
+                data = await response.json()
+                code = data.get('result')
+                if code and code != '0x':
+                    return 'unknown'
+                else:
+                    return 'user'
+            else:
+                return 'unknown'
+
+    async def multi_account_type_exclude_token(self, address, chain_list):
+        results = {}
+        async with aiohttp.ClientSession() as session:
+            tasks = [self.account_type_exclude_token(address, chain, session) for chain in chain_list]
+            data = await asyncio.gather(*tasks)
+            for chain, result in zip(chain_list, data):
+                results[chain] = result
         return results
 
     def create_wallet(self, platform):

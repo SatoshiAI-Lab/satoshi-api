@@ -234,7 +234,7 @@ class AddressQueryView(APIView):
         
         if not addr_type or addr_type == 'account':
             wallet_handler = WalletHandler()
-            address_type_res = wallet_handler.multi_account_type_exclude_token(address, excluded_chains)
+            address_type_res = asyncio.run(wallet_handler.multi_account_type_exclude_token(address, excluded_chains))
 
             chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
             balance_for_account = asyncio.run(wallet_handler.multi_get_balances([address], chains_for_account))
