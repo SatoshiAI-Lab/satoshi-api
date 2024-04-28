@@ -206,7 +206,7 @@ class AddressQueryView(APIView):
         excluded_chains = chains
         token_data = dict()
         account_data = dict()
-
+        
         if not addr_type or addr_type == 'token':
             ave_data = AveAPI.search(address)
             for d in ave_data:
