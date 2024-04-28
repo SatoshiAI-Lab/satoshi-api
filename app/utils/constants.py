@@ -61,7 +61,7 @@ CHAIN_DICT = {
         'gecko': 'solana',
         'dex_tools': 'solana',
         'ave': 'solana',
-        'rpc': 'https://api.mainnet-beta.solana.com',
+        'rpc': 'https://solana-rpc.publicnode.com',
         'tx_url': 'https://solscan.io/tx/',
     },
     "ethereum": {

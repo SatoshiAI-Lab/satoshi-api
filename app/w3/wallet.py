@@ -176,6 +176,7 @@ class WalletHandler():
             address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item['contract_address'])
             price_usd = item.get('quote_rate')
             price_usd_24h = item.get('quote_rate_24h')
+            price_change = round((price_usd-price_usd_24h)/price_usd_24h*100, 4) if price_usd and price_usd_24h else None
             tokens.append(dict(
                 symbol = item['contract_ticker_symbol'],
                 name = item['contract_name'],
@@ -186,7 +187,8 @@ class WalletHandler():
                 valueUsd = item['quote'],
                 price_usd = price_usd,
                 value_usd = item['quote'],
-                price_change_24h = round((price_usd-price_usd_24h)/price_usd_24h*100, 4) if price_usd and price_usd_24h else None,
+                price_change = price_change,
+                price_change_24h = price_change,
                 logoUrl = item['logo_url'],
             ))
             value += item.get('quote') or 0
@@ -223,6 +225,7 @@ class WalletHandler():
                             price_usd = None,
                             value_usd = None,
                             price_change_24h = None,
+                            price_change = None,
                             logoUrl = None,
                         ))
                     json_data = dict(address=address, value=value, tokens=tokens, chain=chain)

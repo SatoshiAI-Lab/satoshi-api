@@ -70,6 +70,7 @@ class GeckoAPI():
             logo = base['image_url'] if base.get('image_url') and base['image_url'] != 'missing.png' else None,
             name = base.get('name'),
             symbol = base.get('symbol'),
+            decimals = base.get('decimals'),
             description = info.get('description'),
             price = base.get('price_usd'),
             liquidity = base.get('total_reserve_in_usd'),
