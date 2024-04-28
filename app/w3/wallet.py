@@ -125,7 +125,6 @@ class WalletHandler():
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
-
         return results
 
     async def get_balances(self, chain, address):   
