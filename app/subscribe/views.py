@@ -1,6 +1,8 @@
+import requests
+import json
+import os
+
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from django.db import transaction
 from django.db.models import F, Q
 from django.core.exceptions import ValidationError
@@ -11,10 +13,6 @@ from .serializers import UserSubscriptionSerializer
 from rest_framework.permissions import IsAuthenticated
 from utils import constants
 from utils.response_util import ResponseUtil
-
-import requests
-import json
-import os
 
 
 class UserSubscriptionSettings(APIView):

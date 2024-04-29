@@ -4,8 +4,6 @@ from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer
 from users.models import User
 
-from utils.response_util import ResponseUtil
-
 
 class ChatRoomDetailView(generics.RetrieveAPIView):
     serializer_class = ChatRoomSerializer
