@@ -11,12 +11,29 @@ from base58 import b58decode
 import aiohttp
 import asyncio
 
-from concurrent import futures
 from utils import constants
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def retry(retries=5, delay=1):
+    def wrapper(func):
+        async def wrapped_f(*args, **kwargs):
+            nonlocal delay
+            for attempt in range(1, retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    # logging.error(f"Attempt {attempt} failed: {str(e)}")
+                    if attempt == retries:
+                        # logging.error("Max retries reached. Giving up.")
+                        return
+                    # await asyncio.sleep(delay)
+                    delay *= 2  # Exponential backoff
+        return wrapped_f
+    return wrapper
 
 
 class WalletHandler():
@@ -142,28 +159,26 @@ class WalletHandler():
             json_data = res
         return (chain, address, json_data)
     
-    async def get_token_balances_from_cqt(self, chain, address):
+    @retry(retries=5)
+    async def request_balances_from_cqt(self, chain, address):
         async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(
-                    f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/",
-                    headers={
-                        "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
-                        "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
-                    }
-                ) as response:
-                    if response.status != 200:
-                        return
+            url = f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/"
+            headers = {
+                "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
+                "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
+            }
+
+            async with session.get(url, headers=headers) as response:
+                if response.status == 200:
                     return await response.json()
-            except Exception as e:
-                logging.error(f"Error fetching balances for chain '{chain}': {str(e)}")
-                return
+                else:
+                    response.raise_for_status()
             
     async def get_balances_from_cqt(self, chain, address):
         network_name = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
-        res = await self.get_token_balances_from_cqt(network_name, address)
+        res = await self.request_balances_from_cqt(network_name, address)
         if not res:
             return
         chain_id = res['data']['chain_id']
@@ -199,44 +214,48 @@ class WalletHandler():
             value += item.get('quote') or 0
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain_data)
         return json_data
+    
+    @retry(retries=5)
+    async def request_balances_from_merlin(self, address):
+        async with aiohttp.ClientSession() as session:
+            url = os.getenv('MERLIN_DOMAIN')
+            headers = {'Content-Type': 'application/json'}
+
+            async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=15) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    response.raise_for_status()
 
     async def get_balances_from_merlin(self, chain, address):
-        url = os.getenv('MERLIN_DOMAIN')
-        json_data = {}
-        headers = {'Content-Type': 'application/json'}
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=15) as response:
-                    if response.status != 200:
-                        return json_data
-                    data = await response.json()
-                    items = data.get('result', {}).get('data', {}).get('json', [])
-                    tokens = []
-                    value = None
-                    chain = dict(
-                        id = str(constants.CHAIN_DICT[chain]['id']),
-                        name = chain,
-                        logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
-                    )
-                    for item in items:
-                        tokens.append(dict(
-                            symbol = item['symbol'],
-                            name = item['name'],
-                            decimals = item['decimals'],
-                            amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
-                            address = item['token_address'],
-                            priceUsd = None,
-                            valueUsd = None,
-                            price_usd = None,
-                            value_usd = None,
-                            price_change_24h = None,
-                            price_change = None,
-                            logoUrl = None,
-                        ))
-                    json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
-        except Exception as e:
-            logger.error(f'Request timeout: {e}')
+        res = await self.request_balances_from_merlin(address)
+        if not res:
             return
+        
+        items = res.get('result', {}).get('data', {}).get('json', [])
+        tokens = []
+        value = None
+        chain = dict(
+            id = str(constants.CHAIN_DICT[chain]['id']),
+            name = chain,
+            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+        )
+        for item in items:
+            tokens.append(dict(
+                symbol = item['symbol'],
+                name = item['name'],
+                decimals = item['decimals'],
+                amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
+                address = item['token_address'],
+                priceUsd = None,
+                valueUsd = None,
+                price_usd = None,
+                value_usd = None,
+                price_change_24h = None,
+                price_change = None,
+                logoUrl = None,
+            ))
+        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
     def update_token_info(self, chain, items):
