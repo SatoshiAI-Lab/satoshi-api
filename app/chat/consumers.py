@@ -159,7 +159,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def get_event(self, user_id, subscriptions_dict):
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(120)) as session:
-            url = f"{os.getenv('SUB_API')}/message_post"
+            url = f"{os.getenv('SUB_API')}/message_post/"
             response_text = await self.fetch(session, url, dict(user_id=user_id, language=self.language, content=subscriptions_dict))
 
         data = json.loads(response_text).get('data', [])
