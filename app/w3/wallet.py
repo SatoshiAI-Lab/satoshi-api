@@ -129,6 +129,26 @@ class WalletHandler():
         return secretKey, publicKey, address
     
     async def multi_get_balances(self, address_list, chain_list):
+        results = {}
+        
+        # chain_list_for_ankr = [k for k, v in constants.CHAIN_DICT.items() if v['ankr'] and k in chain_list]
+        # chain_list_for_other = [item for item in chain_list if item not in chain_list_for_ankr]
+
+        # if chain_list_for_ankr:
+        #     tasks = []
+        #     async with aiohttp.ClientSession() as session:
+        #         for address in address_list:
+        #             tasks.append(self.get_balances_from_ankr(chain_list_for_ankr, address))
+
+        #         for future in asyncio.as_completed(tasks):
+        #             address, data = await future
+        #             for chain, v in data.items():
+        #                 if chain not in results:
+        #                     results[chain] = {}
+        #                 results[chain][address] = v
+
+        # if chain_list_for_other:
+
         tasks = []
         async with aiohttp.ClientSession() as session:
             for address in address_list:
@@ -136,13 +156,73 @@ class WalletHandler():
                     if await self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
                         tasks.append(self.get_balances(chain, address))
 
-            results = {}
             for future in asyncio.as_completed(tasks):
                 chain, address, data = await future
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
+
         return results
+    
+    @retry(retries=5)
+    async def request_balances_from_ankr(self, chain_list, address):
+        async with aiohttp.ClientSession() as session:
+            url = f"{os.getenv('ANKR_DOMAIN')}/multichain/{os.getenv('ANKR_TOKEN')}"
+            headers = {
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "jsonrpc": "2.0",
+                "method": "ankr_getAccountBalance",
+                "params": {
+                    "blockchain": chain_list,
+                    "walletAddress": address
+                },
+                "id": 1
+            }
+
+            async with session.post(url, headers=headers, data=json.dumps(payload)) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    response.raise_for_status()
+    
+    async def get_balances_from_ankr(self, chain_list, address):
+        json_data = dict()
+        chain_list = [constants.CHAIN_DICT[c].get('ankr') for c in chain_list]
+        result = await self.request_balances_from_ankr(chain_list, address)
+        if not result:
+            return (address, json_data)
+        result = result.get('result', dict()).get('assets', [])
+        for item in result:
+            chain_for_ankr = item['blockchain']
+            chain = constants.ANKR_CHAIN_DICT[chain_for_ankr]
+            data = dict(
+                symbol = item['tokenSymbol'],
+                name = item['tokenName'],
+                decimals = item['tokenDecimals'],
+                amount = item['balance'],
+                address = item.get('contractAddress', constants.ZERO_ADDRESS),
+                price_usd = float(item['tokenPrice']) if item.get('tokenPrice') else None,
+                value_usd = float(item['balanceUsd']) if item.get('balanceUsd') else None,
+                # price_change = None,
+                price_change_24h = None,
+                logo = item.get('thumbnail'),
+            )
+            if chain not in json_data:
+                json_data[chain] = dict(
+                    tokens=[data], 
+                    value=data['value_usd'], 
+                    chain = dict(
+                        id = str(constants.CHAIN_DICT[chain]['id']),
+                        name = chain,
+                        logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+                    ),
+                )
+            else:
+                json_data[chain]['tokens'].append(data)
+                json_data[chain]['value'] = json_data[chain]['value'] + data['value_usd']
+        return (address, json_data)
 
     async def get_balances(self, chain, address):   
         chain_data = dict(
@@ -203,11 +283,11 @@ class WalletHandler():
                 decimals = item['contract_decimals'],
                 amount = item['balance'],
                 address = address,
-                priceUsd = price_usd,
-                valueUsd = item['quote'],
+                # priceUsd = price_usd,
+                # valueUsd = item['quote'],
                 price_usd = price_usd,
                 value_usd = item['quote'],
-                price_change = price_change,
+                # price_change = price_change,
                 price_change_24h = price_change,
                 logo = item['logo_url'],
             ))
@@ -247,12 +327,12 @@ class WalletHandler():
                 decimals = item['decimals'],
                 amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
                 address = item['token_address'],
-                priceUsd = None,
-                valueUsd = None,
+                # priceUsd = None,
+                # valueUsd = None,
                 price_usd = None,
                 value_usd = None,
                 price_change_24h = None,
-                price_change = None,
+                # price_change = None,
                 logo = None,
             ))
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)

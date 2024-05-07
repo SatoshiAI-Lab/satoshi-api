@@ -55,7 +55,7 @@ class ChainView(APIView):
     
     @method_decorator(cache_page(5 * 60))
     def get(self, request, *args, **kwargs):
-        data = {"chains": [dict(name=c, logo=f"{os.getenv('S3_DOMAIN')}/chains/logo/{c}.png") for c in constants.CHAIN_DICT], "platforms": constants.PLATFORM_LIST}
+        data = {"chains": [dict(name=c, logo=f"{os.getenv('S3_DOMAIN')}/chains/logo/{c}.png", platform = constants.CHAIN_DICT[c]['platform']) for c in constants.CHAIN_DICT], "platforms": constants.PLATFORM_LIST}
         return ResponseUtil.success(data)
 
 
