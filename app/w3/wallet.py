@@ -209,7 +209,7 @@ class WalletHandler():
                 value_usd = item['quote'],
                 price_change = price_change,
                 price_change_24h = price_change,
-                logoUrl = item['logo_url'],
+                logo = item['logo_url'],
             ))
             value += item.get('quote') or 0
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain_data)
@@ -253,7 +253,7 @@ class WalletHandler():
                 value_usd = None,
                 price_change_24h = None,
                 price_change = None,
-                logoUrl = None,
+                logo = None,
             ))
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
