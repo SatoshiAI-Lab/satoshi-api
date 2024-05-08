@@ -129,26 +129,6 @@ class WalletHandler():
         return secretKey, publicKey, address
     
     async def multi_get_balances(self, address_list, chain_list):
-        results = {}
-        
-        # chain_list_for_ankr = [k for k, v in constants.CHAIN_DICT.items() if v['ankr'] and k in chain_list]
-        # chain_list_for_other = [item for item in chain_list if item not in chain_list_for_ankr]
-
-        # if chain_list_for_ankr:
-        #     tasks = []
-        #     async with aiohttp.ClientSession() as session:
-        #         for address in address_list:
-        #             tasks.append(self.get_balances_from_ankr(chain_list_for_ankr, address))
-
-        #         for future in asyncio.as_completed(tasks):
-        #             address, data = await future
-        #             for chain, v in data.items():
-        #                 if chain not in results:
-        #                     results[chain] = {}
-        #                 results[chain][address] = v
-
-        # if chain_list_for_other:
-
         tasks = []
         async with aiohttp.ClientSession() as session:
             for address in address_list:
@@ -156,12 +136,12 @@ class WalletHandler():
                     if await self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
                         tasks.append(self.get_balances(chain, address))
 
+            results = {}
             for future in asyncio.as_completed(tasks):
                 chain, address, data = await future
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
-
         return results
     
     @retry(retries=5)
@@ -273,7 +253,6 @@ class WalletHandler():
             logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
         )
         for item in items:
-            address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item['contract_address'])
             price_usd = item.get('quote_rate')
             price_usd_24h = item.get('quote_rate_24h')
             price_change = round((price_usd-price_usd_24h)/price_usd_24h*100, 4) if price_usd and price_usd_24h else None
@@ -282,7 +261,7 @@ class WalletHandler():
                 name = item['contract_name'],
                 decimals = item['contract_decimals'],
                 amount = item['balance'],
-                address = address,
+                address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item['contract_address']),
                 # priceUsd = price_usd,
                 # valueUsd = item['quote'],
                 price_usd = price_usd,
