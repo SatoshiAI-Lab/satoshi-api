@@ -21,4 +21,8 @@ urlpatterns = [
     path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
     path('coin/create/<str:pk>/', CreateTokenView.as_view(),  name='coin-create'),
     path('coin/mint/<str:pk>/', MintTokenView.as_view(),  name='coin-mint'),
+
+    path('coin/cross/quote', CoinCrossQuoteView.as_view(), name='coin-cross-quote'),
+    path('coin/cross/<str:provider>', CoinCrossView.as_view(), name='coin-cross'),
+    path('coin/cross/status/<str:provider>', CoinCrossStatusView.as_view(), name='coin-cross-status'),
 ]

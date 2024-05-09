@@ -446,3 +446,60 @@ class MintTokenView(APIView):
         
         return ResponseUtil.success(data=dict(hash_tx=mint_hash, url=constants.CHAIN_DICT[chain]['tx_url'] + mint_hash, address=address, status = log_obj.status))
 
+
+class CoinCrossQuoteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):    
+        form = forms.CoinCrossQuoteForms(request.data)
+        if not form.is_valid():
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
+        form_data = dict(form.data)
+
+        wallet_handler = WalletHandler()
+        data = wallet_handler.token_cross_quote(form_data)
+        
+        return ResponseUtil.success(data=data)
+    
+
+class CoinCrossView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, provider, *args, **kwargs):    
+        form = forms.CoinCrossForms(request.data)
+        if not form.is_valid():
+            return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
+        form_data = dict(form.data)
+
+        wallet_handler = WalletHandler()
+        data = wallet_handler.token_cross(provider, form_data)
+        hash_tx = data.get('trx_hash')
+
+        WalletLog.objects.create(
+            chain=form_data['fromData']['chain'],
+            input_token=form_data['fromData']['tokenAddress'],
+            output_token=form_data['toData']['tokenAddress'],
+            amount=form_data['crossAmount'],
+            hash_tx=hash_tx,
+            type_id=3,
+            status=0,
+            user=form_data['fromData']['walletAddress'],
+        )
+        
+        return ResponseUtil.success(data=dict(hash_tx = hash_tx, provider = provider))
+    
+
+class CoinCrossStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, provider, *args, **kwargs):
+        hash_tx = request.query_params.get('hash_tx')
+
+        if not WalletLog.objects.filter(hash_tx=hash_tx).exists():
+            return ResponseUtil.no_data(msg = 'Hash does not exist.')
+        
+        wallet_handler = WalletHandler()
+        data = wallet_handler.token_cross_status(provider, hash_tx)
+        
+        return ResponseUtil.success(data=data)

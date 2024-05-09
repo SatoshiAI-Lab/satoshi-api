@@ -49,3 +49,45 @@ class MintTokenForms(forms.Form):
     chain = forms.CharField(min_length=1, max_length=30, required=False)
     created_hash = forms.CharField(min_length=1, max_length=128)
     amount = forms.IntegerField(min_value=1)
+
+
+class CoinCrossQuoteForms(forms.Form):
+    crossAmount = forms.CharField(min_length=1, max_length=128)
+    slippageBps = forms.IntegerField(min_value=0, max_value=10000, required=False)
+    fromData = forms.JSONField(required=True)
+    toData = forms.JSONField(required=True)
+
+    def clean_fromData(self):
+        fromData = self.cleaned_data.get('fromData')
+        if not isinstance(fromData, dict):
+            raise forms.ValidationError('Must a dict')
+        if 'chain' not in fromData or 'tokenAddress' not in fromData:
+            raise forms.ValidationError('Must have chain and tokenAddress')
+        
+    def clean_toData(self):
+        toData = self.cleaned_data.get('toData')
+        if not isinstance(toData, dict):
+            raise forms.ValidationError('Must a dict')
+        if 'chain' not in toData or 'tokenAddress' not in toData:
+            raise forms.ValidationError('Must have chain and tokenAddress')
+        
+
+class CoinCrossForms(forms.Form):
+    crossAmount = forms.CharField(min_length=1, max_length=128)
+    slippageBps = forms.IntegerField(min_value=0, max_value=10000, required=False)
+    fromData = forms.JSONField(required=True)
+    toData = forms.JSONField(required=True)
+
+    def clean_fromData(self):
+        fromData = self.cleaned_data.get('fromData')
+        if not isinstance(fromData, dict):
+            raise forms.ValidationError('Must a dict')
+        if 'chain' not in fromData or 'tokenAddress' not in fromData or 'walletAddress' not in fromData or 'walletSecretKey' not in fromData:
+            raise forms.ValidationError('Must have chain, walletSecretKey, walletAddress and tokenAddress')
+        
+    def clean_toData(self):
+        toData = self.cleaned_data.get('toData')
+        if not isinstance(toData, dict):
+            raise forms.ValidationError('Must a dict')
+        if 'chain' not in toData or 'tokenAddress' not in toData or 'walletAddress' not in toData:
+            raise forms.ValidationError('Must have chain, walletAddress and tokenAddress')

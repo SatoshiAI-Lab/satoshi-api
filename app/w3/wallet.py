@@ -9,6 +9,7 @@ import re
 from base58 import b58decode
 
 import aiohttp
+from aiohttp import ClientTimeout
 import asyncio
 
 from utils import constants
@@ -18,7 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def retry(retries=5, delay=1):
+def retry(retries=3, delay=1):
     def wrapper(func):
         async def wrapped_f(*args, **kwargs):
             nonlocal delay
@@ -26,9 +27,7 @@ def retry(retries=5, delay=1):
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
-                    # logging.error(f"Attempt {attempt} failed: {str(e)}")
                     if attempt == retries:
-                        # logging.error("Max retries reached. Giving up.")
                         return
                     # await asyncio.sleep(delay)
                     delay *= 2  # Exponential backoff
@@ -130,81 +129,24 @@ class WalletHandler():
     
     async def multi_get_balances(self, address_list, chain_list):
         tasks = []
+        results = {}
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
                     if await self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
-                        tasks.append(self.get_balances(chain, address))
+                        tasks.append(self.get_balances(chain, address, session))
 
-            results = {}
-            for future in asyncio.as_completed(tasks):
-                chain, address, data = await future
+            completed_tasks = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in completed_tasks:
+                if isinstance(result, Exception):
+                    continue
+                chain, address, data = result
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
         return results
     
-    @retry(retries=5)
-    async def request_balances_from_ankr(self, chain_list, address):
-        async with aiohttp.ClientSession() as session:
-            url = f"{os.getenv('ANKR_DOMAIN')}/multichain/{os.getenv('ANKR_TOKEN')}"
-            headers = {
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "jsonrpc": "2.0",
-                "method": "ankr_getAccountBalance",
-                "params": {
-                    "blockchain": chain_list,
-                    "walletAddress": address
-                },
-                "id": 1
-            }
-
-            async with session.post(url, headers=headers, data=json.dumps(payload)) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    response.raise_for_status()
-    
-    async def get_balances_from_ankr(self, chain_list, address):
-        json_data = dict()
-        chain_list = [constants.CHAIN_DICT[c].get('ankr') for c in chain_list]
-        result = await self.request_balances_from_ankr(chain_list, address)
-        if not result:
-            return (address, json_data)
-        result = result.get('result', dict()).get('assets', [])
-        for item in result:
-            chain_for_ankr = item['blockchain']
-            chain = constants.ANKR_CHAIN_DICT[chain_for_ankr]
-            data = dict(
-                symbol = item['tokenSymbol'],
-                name = item['tokenName'],
-                decimals = item['tokenDecimals'],
-                amount = item['balance'],
-                address = item.get('contractAddress', constants.ZERO_ADDRESS),
-                price_usd = float(item['tokenPrice']) if item.get('tokenPrice') else None,
-                value_usd = float(item['balanceUsd']) if item.get('balanceUsd') else None,
-                # price_change = None,
-                price_change_24h = None,
-                logo = item.get('thumbnail'),
-            )
-            if chain not in json_data:
-                json_data[chain] = dict(
-                    tokens=[data], 
-                    value=data['value_usd'], 
-                    chain = dict(
-                        id = str(constants.CHAIN_DICT[chain]['id']),
-                        name = chain,
-                        logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
-                    ),
-                )
-            else:
-                json_data[chain]['tokens'].append(data)
-                json_data[chain]['value'] = json_data[chain]['value'] + data['value_usd']
-        return (address, json_data)
-
-    async def get_balances(self, chain, address):   
+    async def get_balances(self, chain, address, session):
         chain_data = dict(
             id = str(constants.CHAIN_DICT[chain]['id']),
             name = chain,
@@ -212,39 +154,38 @@ class WalletHandler():
         )
         json_data = dict(address=address, value=0, tokens=[], chain=chain_data)
         if chain == 'merlin':
-            res = await self.get_balances_from_merlin(chain, address)
+            res = await self.get_balances_from_merlin(chain, address, session)
         else:
-            res = await self.get_balances_from_cqt(chain, address)
+            res = await self.get_balances_from_cqt(chain, address, session)
         if res:
             json_data = res
         return (chain, address, json_data)
     
-    @retry(retries=5)
-    async def request_balances_from_cqt(self, chain, address):
-        async with aiohttp.ClientSession() as session:
-            url = f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/"
-            headers = {
-                "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
-                "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
-            }
+    @retry(retries=3)
+    async def request_balances_from_cqt(self, chain, address, session):
+        url = f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/"
+        headers = {
+            "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
+            "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
+        }
 
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    response.raise_for_status()
+        # timeout = ClientTimeout(connect=3, sock_read=6)
+        async with session.get(url, headers=headers, timeout=6) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                response.raise_for_status()
             
-    async def get_balances_from_cqt(self, chain, address):
+    async def get_balances_from_cqt(self, chain, address, session):
         network_name = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
-        res = await self.request_balances_from_cqt(network_name, address)
+        res = await self.request_balances_from_cqt(network_name, address, session)
         if not res:
             return
         chain_id = res['data']['chain_id']
         chain_name = res['data']['chain_name']
         items = res['data']['items']
-        # items = self.update_token_info(chain, b.data.items)
         tokens = []
         value = 0
         chain_data = dict(
@@ -274,19 +215,19 @@ class WalletHandler():
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain_data)
         return json_data
     
-    @retry(retries=5)
-    async def request_balances_from_merlin(self, address):
-        async with aiohttp.ClientSession() as session:
-            url = os.getenv('MERLIN_DOMAIN')
-            headers = {'Content-Type': 'application/json'}
+    @retry(retries=3)
+    async def request_balances_from_merlin(self, address, session):
+        url = os.getenv('MERLIN_DOMAIN')
+        headers = {'Content-Type': 'application/json'}
 
-            async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=15) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    response.raise_for_status()
+        timeout = ClientTimeout(connect=3, sock_read=6)
+        async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=timeout) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                response.raise_for_status()
 
-    async def get_balances_from_merlin(self, chain, address):
+    async def get_balances_from_merlin(self, chain, address, session):
         res = await self.request_balances_from_merlin(address)
         if not res:
             return
@@ -316,22 +257,6 @@ class WalletHandler():
             ))
         json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
-    
-    def update_token_info(self, chain, items):
-        if chain != 'solana':
-            w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
-            for item in items:
-                try:
-                    if item.contract_name and item.contract_ticker_symbol:
-                        continue
-                    if item.address == constants.ZERO_ADDRESS:
-                        continue
-                    contract = w3.eth.contract(address=Web3.to_checksum_address(item.contract_address), abi=constants.ERC20_ABI)
-                    item.contract_name = contract.functions.name().call()
-                    item.contract_ticker_symbol = contract.functions.symbol().call()    
-                except:
-                    continue    
-        return items
     
     def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
         hash_tx = None
@@ -534,3 +459,20 @@ class WalletHandler():
             hash_tx = data.get('mint_trx_hash')
         return hash_tx
         
+    def token_cross_quote(self, form_data):
+        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/quote"
+        response = requests.post(target_url, json=form_data)
+        data = json.loads(response.content).get('data', {})
+        return data
+    
+    def token_cross(self, provider, form_data):
+        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/cross/{provider}"
+        response = requests.post(target_url, json=form_data)
+        data = json.loads(response.content).get('data', {})
+        return data
+    
+    def token_cross_status(self, provider, chain, hash_tx):
+        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/state/{provider}"
+        response = requests.get(target_url, params=dict(chain=chain, trx_hash=hash_tx))
+        data = json.loads(response.content).get('data', {})
+        return data
