@@ -462,17 +462,15 @@ class WalletHandler():
     def token_cross_quote(self, form_data):
         target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/quote"
         response = requests.post(target_url, json=form_data)
-        data = json.loads(response.content).get('data', {})
-        return data
+        return response.status_code, response.content
     
-    def token_cross(self, provider, form_data):
+    def token_cross(self, form_data):
+        provider = form_data.get('provider')
         target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/cross/{provider}"
         response = requests.post(target_url, json=form_data)
-        data = json.loads(response.content).get('data', {})
-        return data
+        return response.status_code, response.content
     
     def token_cross_status(self, provider, chain, hash_tx):
         target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/state/{provider}"
-        response = requests.get(target_url, params=dict(chain=chain, trx_hash=hash_tx))
-        data = json.loads(response.content).get('data', {})
-        return data
+        response = requests.get(target_url, params=dict(from_net=chain, trx_hash=hash_tx))
+        return response.status_code, response.content

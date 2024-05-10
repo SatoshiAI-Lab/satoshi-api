@@ -457,23 +457,40 @@ class CoinCrossQuoteView(APIView):
         form_data = dict(form.data)
 
         wallet_handler = WalletHandler()
-        data = wallet_handler.token_cross_quote(form_data)
+        status, data = wallet_handler.token_cross_quote(form_data)
+        data = json.loads(data)
+        if status != 200:
+            return ResponseUtil.no_data(msg = data['message'])
+        return ResponseUtil.success(data=data.get('data', {}))
         
-        return ResponseUtil.success(data=data)
-    
 
 class CoinCrossView(APIView):
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
-    def post(self, request, provider, *args, **kwargs):    
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            uuid.UUID(pk, version=4)
+        except ValueError:
+            return ResponseUtil.field_error()
+           
         form = forms.CoinCrossForms(request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         form_data = dict(form.data)
 
+        if form_data['fromData']['chain'] not in constants.CHAIN_DICT or form_data['toData']['chain'] not in constants.CHAIN_DICT:
+            return ResponseUtil.field_error(msg='Chain error.')
+        
+        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        form_data['fromData']['walletSecretKey'] = wallet.private_key
+        form_data['fromData']['walletAddress'] = wallet.address
+
         wallet_handler = WalletHandler()
-        data = wallet_handler.token_cross(provider, form_data)
+        status, data = wallet_handler.token_cross(form_data)
+        data = json.loads(data).get('data', {})
+        if status != 200:
+            return ResponseUtil.no_data(msg = data['message'])
         hash_tx = data.get('trx_hash')
 
         WalletLog.objects.create(
@@ -484,22 +501,38 @@ class CoinCrossView(APIView):
             hash_tx=hash_tx,
             type_id=3,
             status=0,
-            user=form_data['fromData']['walletAddress'],
+            user=wallet.user,
         )
         
-        return ResponseUtil.success(data=dict(hash_tx = hash_tx, provider = provider))
+        return ResponseUtil.success(data=dict(hash_tx = hash_tx, provider = form_data.get('provider')))
     
 
 class CoinCrossStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, provider, *args, **kwargs):
+    def get(self, request):
+        provider = request.query_params.get('provider')
+        if not provider:
+            return ResponseUtil.miss_field(msg = 'No provider.')
+        if provider not in constants.CROSS_PROVIDERS:
+            return ResponseUtil.field_error(msg = 'Provider error.')
+        
+        chain = request.query_params.get('chain')
+        if not chain:
+            return ResponseUtil.miss_field(msg = 'No chain.')
+        if chain not in constants.CHAIN_DICT:
+            return ResponseUtil.field_error(msg='Chain error.')
+
         hash_tx = request.query_params.get('hash_tx')
+        if not hash_tx:
+            return ResponseUtil.miss_field(msg = 'No hash.')
 
         if not WalletLog.objects.filter(hash_tx=hash_tx).exists():
             return ResponseUtil.no_data(msg = 'Hash does not exist.')
         
         wallet_handler = WalletHandler()
-        data = wallet_handler.token_cross_status(provider, hash_tx)
-        
+        status, data = wallet_handler.token_cross_status(provider, chain, hash_tx)
+        data = json.loads(data).get('data', {})
+        if status != 200:
+            return ResponseUtil.no_data(msg = data['message'])
         return ResponseUtil.success(data=data)

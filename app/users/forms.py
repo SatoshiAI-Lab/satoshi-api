@@ -73,6 +73,7 @@ class CoinCrossQuoteForms(forms.Form):
         
 
 class CoinCrossForms(forms.Form):
+    provider = forms.CharField(required=True)
     crossAmount = forms.CharField(min_length=1, max_length=128)
     slippageBps = forms.IntegerField(min_value=0, max_value=10000, required=False)
     fromData = forms.JSONField(required=True)
@@ -82,8 +83,8 @@ class CoinCrossForms(forms.Form):
         fromData = self.cleaned_data.get('fromData')
         if not isinstance(fromData, dict):
             raise forms.ValidationError('Must a dict')
-        if 'chain' not in fromData or 'tokenAddress' not in fromData or 'walletAddress' not in fromData or 'walletSecretKey' not in fromData:
-            raise forms.ValidationError('Must have chain, walletSecretKey, walletAddress and tokenAddress')
+        if 'chain' not in fromData or 'tokenAddress' not in fromData:
+            raise forms.ValidationError('Must have chain and tokenAddress')
         
     def clean_toData(self):
         toData = self.cleaned_data.get('toData')
