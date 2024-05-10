@@ -531,8 +531,16 @@ class CoinCrossStatusView(APIView):
             return ResponseUtil.no_data(msg = 'Hash does not exist.')
         
         wallet_handler = WalletHandler()
-        status, data = wallet_handler.token_cross_status(provider, chain, hash_tx)
+        status_code, data = wallet_handler.token_cross_status(provider, chain, hash_tx)
         data = json.loads(data).get('data', {})
-        if status != 200:
+        if status_code != 200:
             return ResponseUtil.no_data(msg = data['message'])
-        return ResponseUtil.success(data=data)
+        
+        status = data['status']
+        if provider == 'jumper':
+            if status == 'DONE':
+                status = 'SUCCESS'
+            elif status == 'NOT_FOUND' or status == 'INVALID' or status == 'FAILED':
+                status == 'FAILURE'
+        
+        return ResponseUtil.success(data=dict(status=status))
