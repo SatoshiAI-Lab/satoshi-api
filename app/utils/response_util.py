@@ -17,7 +17,7 @@ def custom_exception_handler(exc, context):
 
 
 def resp(status, message, data):
-    return Response(data={'code': status, 'message': message, 'data': data})
+    return Response(status=status, data={'code': status, 'message': message, 'data': data})
 
 
 class ResponseUtil():

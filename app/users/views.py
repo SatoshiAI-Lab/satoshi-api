@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 from w3.wallet import WalletHandler
 from utils import constants
 from utils.response_util import ResponseUtil
+from rest_framework.response import Response
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -175,8 +176,7 @@ class UpdateWalletNameView(APIView):
         except ValueError:
             return ResponseUtil.field_error()
         
-        obj = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.query_params.get('name', ''))
-        res = True if obj.exists() else False
+        res = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.query_params.get('name', '')).exists()
         return ResponseUtil.success(data={"result": res})
 
     def patch(self, request, pk):
@@ -185,8 +185,7 @@ class UpdateWalletNameView(APIView):
         except ValueError:
             return ResponseUtil.field_error()
 
-        obj = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.data.get('name', ''))
-        if obj.exists():
+        if Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.data.get('name', '')).exists():
             return ResponseUtil.data_exist()
         wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
         serializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
@@ -460,7 +459,7 @@ class CoinCrossQuoteView(APIView):
         status, data = wallet_handler.token_cross_quote(form_data)
         data = json.loads(data)
         if status != 200:
-            return ResponseUtil.no_data(msg = data['message'])
+            return Response(data=data, status=status)
         return ResponseUtil.success(data=data.get('data', {}))
         
 
