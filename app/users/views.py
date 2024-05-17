@@ -458,9 +458,7 @@ class CoinCrossQuoteView(APIView):
         wallet_handler = WalletHandler()
         status, data = wallet_handler.token_cross_quote(form_data)
         data = json.loads(data)
-        if status != 200:
-            return Response(data=data, status=status)
-        return ResponseUtil.success(data=data.get('data', {}))
+        return Response(data=data, status=status)
         
 
 class CoinCrossView(APIView):
