@@ -1,12 +1,16 @@
 import json
 import copy
 import asyncio
+from typing import Any
 
+from django.db.models.manager import BaseManager
+from django.db.models.query import RawQuerySet
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.db.models import Q
 
-from rest_framework.views import APIView, Request
+from rest_framework.utils.serializer_helpers import ReturnDict, ReturnList
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from . import forms, models, serializers
@@ -21,50 +25,56 @@ from utils.response_util import ResponseUtil
 from w3.dex import GeckoAPI, DexTools, AveAPI
 from w3.wallet import WalletHandler
 
+from rest_framework.request import Request
+from rest_framework.response import Response
+
 
 class CoinSearchView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    @method_decorator(cache_page(5 * 60))
-    def get(self, request):
-        form = forms.CoinSearchForms(request.query_params)
+    @method_decorator(decorator=cache_page(timeout=5 * 60))
+    def get(self, request: Request) -> Response:
+        form: forms.CoinSearchForms = forms.CoinSearchForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        kw = request.query_params['kw']
+        kw: str = request.query_params['kw']
 
         reserved_chars = r'''?&|!{}[]()^~*:\\"'+-'''
-        replace = ['\\' + l for l in reserved_chars]
-        trans = str.maketrans(dict(zip(reserved_chars, replace)))
-        kw = str(kw).strip().translate(trans).replace('%', '')
+        replace: list[str] = ['\\' + l for l in reserved_chars]
+        trans: dict[int, str] = str.maketrans(dict(zip(reserved_chars, replace)))
+        kw = str(object=kw).strip().translate(trans).replace('%', '')
         
-        num = 10
-        data = dict()
+        num: int = 10
+        data: dict = dict()
 
-        sql = f"""
-        select id,name,symbol,logo from token where symbol ilike %s 
-        order by char_length(symbol) asc, strpos('{kw}',symbol) asc, market_cap desc limit {num};
+        sql: str = f"""
+        select id,name,symbol,logo 
+        from token 
+        where symbol ilike %s 
+        order by char_length(symbol) asc, strpos('{kw}',symbol) asc, market_cap desc 
+        limit {num};
         """
-        objs = models.Coin.objects.using('coin_source').raw(sql, [f'%{kw}%'])
-        ser = serializers.CoinSearch(objs, many=True)
-        ser_data = ser.data
-        tokens = [t['id'] for t in ser_data]
+        objs: RawQuerySet[Any] = models.Coin.objects.using(alias='coin_source').raw(raw_query=sql, params=[f'%{kw}%'])
+        ser: serializers.CoinSearch = serializers.CoinSearch(objs, many=True)
+        ser_data: ReturnList | Any | ReturnDict = ser.data
+        tokens: list[int] = [t['id'] for t in ser_data]
 
-        full_objs = models.Coin.objects.using('coin_source').filter(Q(name__icontains = kw) | Q(slug__icontains = kw)).order_by('-market_cap')[:num]
-        full_ser = serializers.CoinSearch(full_objs, many=True)
+        full_objs: BaseManager[models.Coin] = models.Coin.objects.using(alias='coin_source').filter(Q(name__icontains = kw) | Q(slug__icontains = kw)).order_by('-market_cap')[:num]
+        full_ser: serializers.CoinSearch = serializers.CoinSearch(full_objs, many=True)
         for fs in full_ser.data:
             if fs['id'] in tokens:
                 continue
             tokens.append(fs['id'])
             ser_data.append(fs)
 
-        chain_objs = models.CoinChainData.objects.using('coin_source').filter(address__icontains = kw)[:num]
+        chain_objs: BaseManager[models.CoinChainData] = models.CoinChainData.objects.using(alias='coin_source').filter(address__icontains = kw)[:num]
         for chain_obj in chain_objs:
             try:
-                token = chain_obj.token
+                token: models.Coin = chain_obj.token
                 if token.id in tokens:
                     continue
                 tokens.append(token.id)
-                ser_data.append(dict(id=token.id,name=token.name,symbol=token.symbol,logo=urljoin(os.getenv('IMAGE_DOMAIN'), token.logo)))
+                ser_data.append(dict(id=token.id,name=token.name,symbol=token.symbol,logo=urljoin(base=os.getenv(key='IMAGE_DOMAIN'), url=token.logo)))
             except:
                 continue
         data['coin'] = ser_data[:num]
@@ -72,57 +82,57 @@ class CoinSearchView(APIView):
 
 
 class CoinListView(APIView):
-    permission_classes = [OptionalAuthentication]
+    permission_classes: list[type[OptionalAuthentication]] = [OptionalAuthentication]
 
     # @method_decorator(cache_page(60 * 10))
-    def post(self, request):
-        form = forms.CoinListForms(request.data)
+    def post(self, request: Request) -> Response:
+        form: forms.CoinListForms = forms.CoinListForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
 
-        uid = request.user.id
+        uid: str | None = request.user.id
         if uid:
-            ids = user_models.User.objects.filter(id=uid).first().ids
+            ids: None | str = user_models.User.objects.filter(id=uid).first().ids
         else:
-            ids = request.data.get('ids')
+            ids: None | str = request.data.get('ids')
         if not ids:
             return ResponseUtil.success(data=dict(list=[]))
 
         if isinstance(ids, str):
             try:
-                ids = json.loads(ids)
+                ids = json.loads(s=ids)
             except:
                 return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        token_ids = [i['id'] for i in ids if i['type'] == 1]
-        t_models = models.Coin.objects.using('coin_source').filter(id__in=token_ids)
-        token_data = serializers.CoinListSerializer(t_models, many=True).data
+        token_ids: list[int] = [i['id'] for i in ids if i['type'] == 1]
+        t_models: BaseManager[models.Coin] = models.Coin.objects.using(alias='coin_source').filter(id__in=token_ids)
+        token_data: ReturnList | Any | ReturnDict = serializers.CoinListSerializer(t_models, many=True).data
 
         return ResponseUtil.success(data=dict(list=token_data))
     
 
 class CoinInfoView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    @method_decorator(cache_page(1 * 60))
-    def get(self, request):
-        form = forms.CoinInfoForms(request.query_params)
+    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    def get(self, request: Request) -> Response:
+        form: forms.CoinInfoForms = forms.CoinInfoForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        address = request.query_params['address']
-        chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
+        address: str = request.query_params['address']
+        chain: str = request.query_params.get('chain', default=constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
 
-        data = dict()
-        chain_gecko = constants.CHAIN_DICT.get(chain, {}).get('gecko')
-        chain_dex_tools = constants.CHAIN_DICT.get(chain, {}).get('dex_tools')
+        data: dict[str, Any] = dict()
+        chain_gecko: str | None = constants.CHAIN_DICT.get(chain, {}).get('gecko')
+        chain_dex_tools: str | None = constants.CHAIN_DICT.get(chain, {}).get('dex_tools')
         if chain_gecko:
-            gecko_data = GeckoAPI.token_info(chain_gecko, address)
+            gecko_data: dict = GeckoAPI.token_info(chain=chain_gecko, address=address)
             data = dict(data, **gecko_data)
         else:
             return ResponseUtil.success(data=data)
         if chain_dex_tools:
-            dex_tools_data = DexTools.token_info(chain_dex_tools, address)
+            dex_tools_data: dict = DexTools.token_info(chain=chain_dex_tools, address=address)
             data['holders'] = dex_tools_data.get('holders')
         else:
             data['holders'] = None
@@ -130,44 +140,40 @@ class CoinInfoView(APIView):
     
 
 class PoolSearchView(APIView):
-    # permission_classes = [IsAuthenticated]
-
-    @method_decorator(cache_page(1 * 60))
-    def get(self, request):
-        form = forms.CoinSearchForms(request.query_params)
+    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    def get(self, request: Request) -> Response:
+        form: forms.CoinSearchForms = forms.CoinSearchForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        kw = request.query_params['kw']
+        kw: str = request.query_params['kw']
 
-        data = GeckoAPI.search(kw).get('pools', [])
+        data: list[dict[str, Any]] = GeckoAPI.search(kw=kw).get('pools', [])
         for d in data:
-            network = d['network']
-            chain = constants.GECKO_CHAIN_DICT.get(network.get('identifier', ''))
+            network: str = d['network']
+            chain: str | None = constants.GECKO_CHAIN_DICT.get(network.get('identifier', ''))
             if not chain:
                 continue
-            d['network'] = dict(chain=chain, logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+            d['network'] = dict(chain=chain, logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
         
         return ResponseUtil.success(data=data)
     
 
 class CoinQueryView(APIView):
-    # permission_classes = [IsAuthenticated]
-
-    @method_decorator(cache_page(1 * 60))
-    def get(self, request):
-        form = forms.CoinSearchForms(request.query_params)
+    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    def get(self, request: Request) -> Response:
+        form: forms.CoinSearchForms = forms.CoinSearchForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        kw = request.query_params['kw']
+        kw: str = request.query_params['kw']
 
-        data = []
-        ave_data = AveAPI.search(kw)
+        data: list[dict] = []
+        ave_data: list[dict] = AveAPI.search(kw=kw)
         for d in ave_data:
-            holders = d.get('holders')
+            holders: Any | None = d.get('holders')
             if len(kw) < 40 and holders and holders < 1000:
                 continue
-            coin_data = dict(
-                logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
+            coin_data: dict = dict(
+                logo = urljoin(base=os.getenv(key='AVE_LOGO_DOMAIN'), url=d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
                 address = d['token'],
                 name = d.get('name'),
                 symbol = d.get('symbol'),
@@ -177,13 +183,13 @@ class CoinQueryView(APIView):
                 price_change_24h = d.get('price_change'),
                 holders = holders,
             )
-            chain = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
+            chain: str | None = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
             if not chain:
                 coin_data['chain'] = dict(name=d.get('chain'), id = None, logo = None)
                 coin_data['is_supported'] = False
                 continue
             else:
-                coin_data['chain'] = dict(name=chain, id = str(constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                coin_data['chain'] = dict(name=chain, id = str(object=constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
                 coin_data['is_supported'] = True
             data.append(coin_data)
         
@@ -191,25 +197,23 @@ class CoinQueryView(APIView):
     
 
 class AddressQueryView(APIView):
-    # permission_classes = [IsAuthenticated]
-
-    @method_decorator(cache_page(1 * 60))
-    def get(self, request):
-        form = forms.AddressQueryForms(request.query_params)
+    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    def get(self, request: Request) -> Response:
+        form: forms.AddressQueryForms = forms.AddressQueryForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        address = request.query_params['address']
-        addr_type = request.query_params.get('type')
-        chains = copy.deepcopy(constants.CHAIN_DICT)
-        excluded_chains = chains
-        token_data = dict()
-        account_data = dict()
+        address: str = request.query_params['address']
+        addr_type: str | None = request.query_params.get('type')
+        chains: dict[str, dict[str, str]] = copy.deepcopy(constants.CHAIN_DICT)
+        excluded_chains: dict[str, dict[str, str]] = chains
+        token_data: dict[str, Any] = dict()
+        account_data: dict[str, Any] = dict()
         
         if not addr_type or addr_type == 'token':
-            ave_data = AveAPI.search(address)
+            ave_data: list[dict] = AveAPI.search(kw=address)
             for d in ave_data:
-                coin_data = dict(
-                    logo = urljoin(os.getenv('AVE_LOGO_DOMAIN'), d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
+                coin_data: dict[str, Any] = dict(
+                    logo = urljoin(base=os.getenv(key='AVE_LOGO_DOMAIN'), url=d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
                     address = d['token'],
                     name = d.get('name'),
                     symbol = d.get('symbol'),
@@ -217,25 +221,25 @@ class AddressQueryView(APIView):
                     price_usd = d.get('current_price_usd'),
                     price_change = d.get('price_change'),
                 )
-                chain = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
+                chain: str | None = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
                 if not chain:
                     chain = d.get('chain')
                     coin_data['chain'] = dict(name=chain, id = None, logo = None)
                     coin_data['is_supported'] = False
                     continue
                 else:
-                    coin_data['chain'] = dict(name=chain, id = str(constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png")
+                    coin_data['chain'] = dict(name=chain, id = str(object=constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
                     coin_data['is_supported'] = True
                     if chain in excluded_chains:
                         excluded_chains.pop(chain)
                 token_data[chain] = coin_data
         
         if not addr_type or addr_type == 'account':
-            wallet_handler = WalletHandler()
-            address_type_res = asyncio.run(wallet_handler.multi_account_type_exclude_token(address, excluded_chains))
+            wallet_handler: WalletHandler = WalletHandler()
+            address_type_res: dict = asyncio.run(main=wallet_handler.multi_account_type_exclude_token(address=address, chain_list=excluded_chains))
 
-            chains_for_account = [k for k, v in address_type_res.items() if v == 'user']
-            balance_for_account = asyncio.run(wallet_handler.multi_get_balances([address], chains_for_account))
+            chains_for_account: list = [k for k, v in address_type_res.items() if v == 'user']
+            balance_for_account: dict = asyncio.run(main=wallet_handler.multi_get_balances(address_list=[address], chain_list=chains_for_account))
             account_data = {k:v[address] if len(v) else v for k, v in balance_for_account.items()}
 
         return ResponseUtil.success(data=dict(tokens=token_data, accounts=account_data))

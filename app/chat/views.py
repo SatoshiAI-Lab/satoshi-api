@@ -1,3 +1,4 @@
+from typing import Any
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from .models import ChatRoom, Message
@@ -7,13 +8,13 @@ from users.models import User
 
 class ChatRoomDetailView(generics.RetrieveAPIView):
     serializer_class = ChatRoomSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def get_object(self):
-        receiver_id = self.kwargs.get("room_name")
-        self.receiver = User.objects.get(id=receiver_id)
+    def get_object(self) -> ChatRoom:
+        receiver_id: Any = self.kwargs.get("room_name")
+        self.receiver: User = User.objects.get(id=receiver_id)
 
-        chat_room = ChatRoom.objects.filter(
+        chat_room: ChatRoom | None = ChatRoom.objects.filter(
             members__in=[self.request.user, self.receiver]
         ).first()
 

@@ -1,6 +1,9 @@
+from datetime import datetime
+from typing import Any, Literal, Never
 import base58
 import json
 import os
+from django.db.models.manager import BaseManager
 import requests
 import copy
 import uuid
@@ -10,6 +13,7 @@ from eth_keys import keys
 from nacl.signing import SigningKey
 
 from rest_framework import generics
+from rest_framework.utils.serializer_helpers import ReturnDict
 from .models import User, Wallet, WalletLog
 from .serializers import *
 from django.shortcuts import get_object_or_404
@@ -24,27 +28,27 @@ from rest_framework.views import APIView
 from w3.wallet import WalletHandler
 from utils import constants
 from utils.response_util import ResponseUtil
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 
 class UserRegistrationView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset: BaseManager[User] = User.objects.all()
     serializer_class = UserSerializer
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer: Never = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return ResponseUtil.field_error()
-        self.perform_create(serializer)
-        # headers = self.get_success_headers(serializer.data)
-        return ResponseUtil.success(serializer.data)
+        self.perform_create(serializer=serializer)
+        return ResponseUtil.success(data=serializer.data)
 
 
 class MineView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
     
-    def get(self, request, *args, **kwargs):
-        id, email = None, None
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        id: str | None; email: str | None = None, None
         if request.user.is_authenticated:
             id = request.user.id
             email = request.user.email
@@ -52,39 +56,44 @@ class MineView(APIView):
     
 
 class ChainView(APIView):
-    # permission_classes = [IsAuthenticated]
-    
-    @method_decorator(cache_page(5 * 60))
-    def get(self, request, *args, **kwargs):
-        data = {"chains": [dict(name=c, logo=f"{os.getenv('S3_DOMAIN')}/chains/logo/{c}.png", platform = constants.CHAIN_DICT[c]['platform']) for c in constants.CHAIN_DICT], "platforms": constants.PLATFORM_LIST}
-        return ResponseUtil.success(data)
+    @method_decorator(decorator=cache_page(timeout=5 * 60))
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        data: dict[str, list[dict] | list[str]] = {
+            "chains": [dict(
+                name=c, 
+                logo=f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{c}.png", 
+                platform = constants.CHAIN_DICT[c]['platform'],
+            ) for c in constants.CHAIN_DICT], 
+            "platforms": constants.PLATFORM_LIST,
+        }
+        return ResponseUtil.success(data=data)
 
 
 class WalletAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
     # @method_decorator(cache_page(30))
-    def get(self, request):
-        chains = request.query_params.get('chain')
-        all_chains = copy.deepcopy(constants.CHAIN_DICT)
+    def get(self, request: Request) -> Response:
+        chains: str | None = request.query_params.get('chain')
+        all_chains: dict[str, dict[str, str]] = copy.deepcopy(x=constants.CHAIN_DICT)
         if not chains:
-            chains = all_chains.keys()
+            chains: list[str] = all_chains.keys()
         else:
-            chains = [c.strip() for c in chains.split(',') if c]
+            chains: list[str] = [c.strip() for c in chains.split(sep=',') if c]
             for c in chains:
                 if c not in all_chains:
                     return ResponseUtil.field_error(msg=f'Chain {c} error.')
-        wallets = Wallet.objects.filter(user=request.user)
-        serializer = WalletListSerializer(wallets, many=True)
-        wallet_handler = WalletHandler()
+        wallets: BaseManager[Wallet] = Wallet.objects.filter(user=request.user)
+        serializer: WalletListSerializer = WalletListSerializer(wallets, many=True)
+        wallet_handler: WalletHandler = WalletHandler()
 
-        balance_for_account = asyncio.run(wallet_handler.multi_get_balances([s['address'] for s in serializer.data], chains))
+        balance_for_account: dict[str, Any] = asyncio.run(main=wallet_handler.multi_get_balances(address_list=[s['address'] for s in serializer.data], chain_list=chains))
         data = dict()
         for k, v in balance_for_account.items():
-            res = []
-            s_data = copy.deepcopy(serializer.data)
+            res: list = []
+            s_data: ReturnDict = copy.deepcopy(x=serializer.data)
             for s in s_data:
-                d = v.get(s['address'])
+                d: str | None = v.get(s['address'])
                 if not d:
                     continue
                 s['value'] = d.get('value', 0)
@@ -92,35 +101,35 @@ class WalletAPIView(APIView):
                 s['chain'] = d.get('chain')
                 res.append(s)
             data[k] = res
-        return ResponseUtil.success(data)
+        return ResponseUtil.success(data=data)
 
-    def post(self, request, *args, **kwargs):
-        data = request.data
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        data: dict[str, Any] = request.data
         data['platform'] = data.get('platform', constants.DEFAULT_PLATFORM)
         if data['platform'] not in constants.PLATFORM_LIST:
             return ResponseUtil.field_error(msg='Platform error.')
         
-        wallet_handler = WalletHandler()
-        data['private_key'], data['public_key'], data['address'] = wallet_handler.create_wallet(data['platform'])
+        wallet_handler: WalletHandler = WalletHandler()
+        data['private_key'], data['public_key'], data['address'] = wallet_handler.create_wallet(platform=data['platform'])
         
         if not data['private_key']:
-            ResponseUtil.field_error()
+            return ResponseUtil.field_error()
 
-        serializer = WalletSerializer(data=data, context={'request': request})
+        serializer: WalletSerializer = WalletSerializer(data=data, context={'request': request})
+        if not serializer.is_valid():
+            return ResponseUtil.field_error()
         
-        if serializer.is_valid():
-            serializer.save()
-            return ResponseUtil.success(serializer.data)
-        return ResponseUtil.field_error()
+        serializer.save()
+        return ResponseUtil.success(data=serializer.data)
 
 
 class ImportPrivateKeyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def post(self, request):
-        data = request.data.copy()
-        private_key = data['private_key']
-        platform = data.get('platform', constants.DEFAULT_PLATFORM)
+    def post(self, request: Request) -> Response:
+        data: dict[str, Any] = request.data.copy()
+        private_key: str = data['private_key']
+        platform: str = data.get('platform', constants.DEFAULT_PLATFORM)
 
         if platform not in constants.PLATFORM_LIST:
             return ResponseUtil.field_error(msg='Platform error.')
@@ -129,38 +138,38 @@ class ImportPrivateKeyView(APIView):
             if len(private_key) < 64 or len(private_key) > 66:
                 return ResponseUtil.field_error()
             
-            private_key_hex = "0x" + private_key if not private_key.startswith("0x") else private_key
-            public_key = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
-            data['public_key'] = str(public_key)
+            private_key_hex: str = "0x" + private_key if not private_key.startswith("0x") else private_key
+            public_key: Any = keys.PrivateKey(bytes.fromhex(private_key_hex[2:])).public_key
+            data['public_key'] = str(object=public_key)
             data['address'] = public_key.to_checksum_address()
         elif platform == 'SOL':
             if len(private_key) > 90 or len(private_key) < 85:
                 return ResponseUtil.field_error()
             
-            private_key_bytes = base58.b58decode(private_key)
-            signing_key = SigningKey(seed=private_key_bytes[:32])
-            public_key_bytes = signing_key.verify_key.encode()
-            data['public_key'] = base58.b58encode(public_key_bytes).decode('utf-8')
+            private_key_bytes: bytes = base58.b58decode(private_key)
+            signing_key: SigningKey = SigningKey(seed=private_key_bytes[:32])
+            public_key_bytes: bytes = signing_key.verify_key.encode()
+            data['public_key'] = base58.b58encode(public_key_bytes).decode(encoding='utf-8')
             data['address'] = data['public_key']
 
-        serializer = PrivateKeySerializer(data=data)
+        serializer: PrivateKeySerializer = PrivateKeySerializer(data=data)
         if serializer.is_valid():
-            wallet = Wallet.objects.create(**serializer.validated_data, user=request.user)
-            return ResponseUtil.success(WalletSerializer(wallet).data)
+            wallet: Wallet = Wallet.objects.create(**serializer.validated_data, user=request.user)
+            return ResponseUtil.success(data=WalletSerializer(wallet).data)
         else:
             return ResponseUtil.field_error()
 
 
 class ExportPrivateKeyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def get(self, request, pk):
+    def get(self, request: Request, pk: str) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
         if wallet.user == request.user:
             return ResponseUtil.success(data={"private_key": wallet.private_key})
         else:
@@ -168,83 +177,78 @@ class ExportPrivateKeyView(APIView):
 
 
 class UpdateWalletNameView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def get(self, request, pk):
+    def get(self, request: Request, pk: str) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        res = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.query_params.get('name', '')).exists()
+        res: bool = Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.query_params.get('name', default='')).exists()
         return ResponseUtil.success(data={"result": res})
 
-    def patch(self, request, pk):
+    def patch(self, request: Request, pk: str) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
 
         if Wallet.objects.exclude(pk=pk).filter(user=request.user, name = request.data.get('name', '')).exists():
             return ResponseUtil.data_exist()
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
-        serializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
+        serializer: WalletNameUpdateSerializer = WalletNameUpdateSerializer(wallet, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return ResponseUtil.success(serializer.data)
+            return ResponseUtil.success(data=serializer.data)
         else:
             return ResponseUtil.field_error()
         
 
 class DeleteWalletView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def delete(self, request, pk):
+    def delete(self, request: Request, pk: str) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
         wallet.delete()
         return ResponseUtil.success()
 
 
 class WalletBalanceAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def get(self, request, address):
-        chains = request.query_params.get('chain')
-        all_chains = copy.deepcopy(constants.CHAIN_DICT)
+    def get(self, request: Request, address: str) -> Response:
+        chains: str | None = request.query_params.get('chain')
+        all_chains: dict[str, dict[str, str]] = copy.deepcopy(constants.CHAIN_DICT)
         if not chains:
-            chains = all_chains.keys()
+            chains: list[str] = all_chains.keys()
         else:
-            chains = [c.strip() for c in chains.split(',') if c]
+            chains: list[str] = [c.strip() for c in chains.split(',') if c]
             for c in chains:
                 if c not in all_chains:
                     return ResponseUtil.field_error(msg=f'Chain error.')
-        wallet_handler = WalletHandler()
-        balance_for_account = asyncio.run(wallet_handler.multi_get_balances([address], chains))
+        wallet_handler: WalletHandler = WalletHandler()
+        balance_for_account: dict[str, Any] = asyncio.run(main=wallet_handler.multi_get_balances(address_list=[address], chain_list=chains))
         return ResponseUtil.success(data={k:v[address] if len(v) else v for k, v in balance_for_account.items()})
 
 
 class UserSelectView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def post(self, request):
-        form = forms.UserSelectForms(request.data)
+    def post(self, request: Request) -> Response:
+        form: forms.UserSelectForms = forms.UserSelectForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        ids = form.data['ids']
-        select_status = int(request.data['status'])
+        ids: list[dict] = form.data['ids']
+        select_status: int = int(request.data['status'])
         
-        user_obj = User.objects.filter(id=request.user.id)
-        existed_ids = user_obj.first().ids or []
-        if existed_ids:
-            try:
-                existed_ids = json.loads(existed_ids)
-            except:
-                existed_ids = existed_ids
+        user_obj: BaseManager[User] = User.objects.filter(id=request.user.id)
+        existed_ids: list[dict] = json.loads(s=user_obj.first().ids) if isinstance(user_obj.first().ids, str) else user_obj.first().ids or []
         for id in ids:
             # add
             if select_status == 1:
@@ -262,45 +266,45 @@ class UserSelectView(APIView):
         while len(existed_ids) > 300:
             del existed_ids[0]
 
-        user_obj.update(ids=json.dumps(existed_ids))
+        user_obj.update(ids=json.dumps(obj=existed_ids))
         return ResponseUtil.success(data={"ids": existed_ids})
     
 
 class AccountTypeView(APIView):
-    def get(self, request):
-        chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
+    def get(self, request: Request) -> Response:
+        chain: str = request.query_params.get('chain', default=constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
         
         if chain == 'solana':
-            target_url = f"{os.getenv('WEB3_SOL_API')}/account/type"
-            params = request.GET.dict()
-            headers = dict(request.headers)
+            target_url: str = f"{os.getenv(key='WEB3_SOL_API')}/account/type"
+            params: dict[str, Any] = request.GET.dict()
+            headers: dict[str, Any] = dict(request.headers)
 
-            response = requests.get(target_url, params=params, headers=headers)
+            response: requests.Response = requests.get(url=target_url, params=params, headers=headers)
 
-            return ResponseUtil.success(data=json.loads(response.content).get('data', {}))
+            return ResponseUtil.success(data=json.loads(s=response.content).get('data', {}))
         else:
-            address = request.query_params.get('address', '')
-            account_type = WalletHandler().account_type(address, chain)
+            address: str = request.query_params.get('address', default='')
+            account_type: Literal['token'] | Literal['unknown'] | Literal['user'] = WalletHandler().account_type(address=address, chain=chain)
             return ResponseUtil.success(data={"type": account_type})
     
 
 class HashStatusAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def get(self, request):
-        chain = request.query_params.get('chain', constants.DEFAULT_CHAIN)
+    def get(self, request: Request) -> Response:
+        chain: str = request.query_params.get('chain', default=constants.DEFAULT_CHAIN)
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
-        hash_tx = request.query_params.get('hash_tx')
+        hash_tx: str | None = request.query_params.get('hash_tx')
         
-        obj = get_object_or_404(WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
-        hash_status = obj.status
-        created_at = obj.added_at
+        obj: WalletLog = get_object_or_404(klass=WalletLog, chain=chain, hash_tx=hash_tx, user = request.user)
+        hash_status: int | None = obj.status
+        created_at: datetime = obj.added_at
         if hash_status in [0, 2]:
-            wallet_handler = WalletHandler()
-            check_res = wallet_handler.check_hash(chain, [dict(trxHash=hash_tx, trxTimestamp=int(obj.added_at.timestamp()))])
+            wallet_handler: WalletHandler = WalletHandler()
+            check_res: list | None = wallet_handler.check_hash(chain=chain, data_list=[dict(trxHash=hash_tx, trxTimestamp=int(obj.added_at.timestamp()))])
             if check_res:
                 check_res = check_res[0]
                 if check_res.get('isPending') == False and check_res.get('isSuccess') == True: # succeed
@@ -314,32 +318,39 @@ class HashStatusAPIView(APIView):
     
 
 class WalletTransactionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
     @transaction.atomic
-    def post(self, request, pk):
+    def post(self, request: Request, pk: str) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        form = forms.WalletTransactionForms(request.data)
+        form: forms.WalletTransactionForms = forms.WalletTransactionForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        form_data = form.data
-        chain=form_data.get('chain', constants.DEFAULT_CHAIN)
+        form_data: dict[str, Any] = form.data
+        chain: str=form_data.get('chain', constants.DEFAULT_CHAIN)
 
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
         
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
 
         wallet_handler = WalletHandler()
-        transaction_hash = wallet_handler.token_transaction(chain, wallet.private_key, form_data['input_token'], form_data['output_token'], form_data['amount'], form_data.get('slippageBps', 10) * 100)
+        transaction_hash: str | None = wallet_handler.token_transaction(
+            chain=chain, 
+            private_key=wallet.private_key, 
+            input_token=form_data['input_token'], 
+            output_token=form_data['output_token'], 
+            amount=form_data['amount'], 
+            slippageBps=form_data.get('slippageBps', 10) * 100,
+        )
         if not transaction_hash:
             return ResponseUtil.web3_error()
         
-        log_obj = WalletLog.objects.create(
+        log_obj: WalletLog = WalletLog.objects.create(
             chain=chain,
             input_token=form_data['input_token'],
             output_token=form_data['output_token'],
@@ -349,39 +360,47 @@ class WalletTransactionView(APIView):
             status=0,
             user=wallet.user,
         )
-
         return ResponseUtil.success(data=dict(hash_tx=transaction_hash, url=constants.CHAIN_DICT[chain]['tx_url'] + transaction_hash, status = log_obj.status))
     
 
 class CreateTokenView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
     @transaction.atomic
-    def post(self, request, pk, *args, **kwargs):
+    def post(self, request: Request, pk: str, *args, **kwargs) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        form = forms.CreateTokenForms(request.data)
+        form: forms.CreateTokenForms = forms.CreateTokenForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        form_data = form.data
-        chain=form_data.get('chain', constants.DEFAULT_CHAIN)
+        form_data: dict[str, Any] = form.data
+        chain: str=form_data.get('chain', constants.DEFAULT_CHAIN)
 
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
         
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
 
-        wallet_handler = WalletHandler()
+        wallet_handler: WalletHandler = WalletHandler()
 
         # create token
-        amount = form_data.get('amount', 0)
-        created_hash, address = wallet_handler.create_token(chain, wallet.private_key, form_data['name'], form_data['symbol'], form_data.get('desc', ''), str(form_data['decimals']), str(amount))
+        amount: float = form_data.get('amount') or 0
+        created_hash: str | None; address: str | None = wallet_handler.create_token(
+            chain=chain, 
+            private_key=wallet.private_key, 
+            name=form_data['name'], 
+            symbol=form_data['symbol'], 
+            desc=form_data.get('desc', ''), 
+            decimals=str(object=form_data['decimals']), 
+            amount=str(object=amount),
+        )
         if not created_hash:
             return ResponseUtil.web3_error()
-        log_obj = WalletLog.objects.create(
+        
+        log_obj: WalletLog = WalletLog.objects.create(
             chain=chain,
             input_token=address,
             output_token=None,
@@ -391,48 +410,47 @@ class CreateTokenView(APIView):
             status=0,
             user=wallet.user,
         )
-
         return ResponseUtil.success(data=dict(hash_tx=created_hash, url=constants.CHAIN_DICT[chain]['tx_url'] + created_hash, status = log_obj.status, address = address))
 
 
 class MintTokenView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
     @transaction.atomic
-    def post(self, request, pk, *args, **kwargs):
+    def post(self, request: Request, pk: str, *args, **kwargs) -> Response:
         try:
-            uuid.UUID(pk, version=4)
+            uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
         
-        form = forms.MintTokenForms(request.data)
+        form: forms.MintTokenForms = forms.MintTokenForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        form_data = form.data
-        chain=form_data.get('chain', 'solana')
-        created_hash = form_data['created_hash']
+        form_data: dict[str, Any] = form.data
+        chain: str=form_data.get('chain', constants.DEFAULT_CHAIN)
+        created_hash: str = form_data['created_hash']
 
         if chain not in constants.CHAIN_DICT:
             return ResponseUtil.field_error(msg='Chain error.')
 
-        created_log = get_object_or_404(WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
+        created_log: WalletLog = get_object_or_404(klass=WalletLog, chain=chain, hash_tx=created_hash, user = request.user)
 
-        wallet_handler = WalletHandler()
-        check_res = wallet_handler.check_hash(chain, [dict(trxHash=created_hash, trxTimestamp=int(created_log.added_at.timestamp()))])
+        wallet_handler: WalletHandler = WalletHandler()
+        check_res: list | None = wallet_handler.check_hash(chain=chain, data_list=[dict(trxHash=created_hash, trxTimestamp=int(x=created_log.added_at.timestamp()))])
         if not (check_res and check_res[0].get('isPending') == False and check_res[0].get('isSuccess') == True): # succeed
             return ResponseUtil.web3_error(msg='Hash status error.')
         
-        wallet = get_object_or_404(Wallet, pk=pk, user=request.user)
+        wallet: Wallet = get_object_or_404(klass=Wallet, pk=pk, user=request.user)
 
         wallet_handler = WalletHandler()
-        address = wallet_handler.get_address_from_hash(chain, created_hash)
+        address: None | str = wallet_handler.get_address_from_hash(chain=chain, hash_tx=created_hash)
 
         # mint token
-        mint_hash = wallet_handler.mint_token(chain, wallet.private_key, created_hash, str(form_data['amount']))
+        mint_hash: str | None = wallet_handler.mint_token(chain=chain, private_key=wallet.private_key, create_hash=created_hash, mint_amount=str(object=form_data['amount']))
         if not mint_hash:
             return ResponseUtil.web3_error()
         
-        log_obj = WalletLog.objects.create(
+        log_obj: WalletLog = WalletLog.objects.create(
             chain=chain,
             input_token=None,
             output_token=None,
@@ -442,21 +460,20 @@ class MintTokenView(APIView):
             status=0,
             user=wallet.user,
         )
-        
         return ResponseUtil.success(data=dict(hash_tx=mint_hash, url=constants.CHAIN_DICT[chain]['tx_url'] + mint_hash, address=address, status = log_obj.status))
 
 
 class CoinCrossQuoteView(APIView):
     permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):    
-        form = forms.CoinCrossQuoteForms(data=request.data)
+    def post(self, request: Request, *args, **kwargs) -> Response:    
+        form: forms.CoinCrossQuoteForms = forms.CoinCrossQuoteForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        form_data = dict(form.data)
+        form_data: dict = dict(form.data)
 
-        wallet_handler = WalletHandler()
-        status, data = wallet_handler.token_cross_quote(form_data=form_data)
+        wallet_handler: WalletHandler = WalletHandler()
+        status: int; data: dict = wallet_handler.token_cross_quote(form_data=form_data)
         return Response(data=data.get('data', {}), status=status)
         
 
@@ -464,16 +481,16 @@ class CoinCrossView(APIView):
     permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 
     @transaction.atomic
-    def post(self, request, pk, *args, **kwargs) -> Response:
+    def post(self, request: Request, pk: str, *args, **kwargs) -> Response:
         try:
             uuid.UUID(hex=pk, version=4)
         except ValueError:
             return ResponseUtil.field_error()
            
-        form = forms.CoinCrossForms(data=request.data)
+        form: forms.CoinCrossForms = forms.CoinCrossForms(data=request.data)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
-        form_data = dict(form.data)
+        form_data: dict = dict(form.data)
         chain: str = form_data['fromData']['chain']
 
         if chain not in constants.CHAIN_DICT or form_data['toData']['chain'] not in constants.CHAIN_DICT:
@@ -483,11 +500,11 @@ class CoinCrossView(APIView):
         form_data['fromData']['walletSecretKey'] = wallet.private_key
         form_data['fromData']['walletAddress'] = wallet.address
 
-        wallet_handler = WalletHandler()
-        status, data = wallet_handler.token_cross(form_data=form_data)
+        wallet_handler: WalletHandler = WalletHandler()
+        status: int; data: dict = wallet_handler.token_cross(form_data=form_data)
         if status != 200:
             return ResponseUtil.no_data(msg = data['message'])
-        hash_tx = data.get('data', {}).get('trx_hash')
+        hash_tx: str = data.get('data', {}).get('trx_hash')
 
         WalletLog.objects.create(
             chain=chain,
@@ -499,7 +516,6 @@ class CoinCrossView(APIView):
             status=0,
             user=wallet.user,
         )
-        
         return ResponseUtil.success(data=dict(hash_tx = hash_tx, url=constants.CHAIN_DICT[chain]['tx_url'] + hash_tx, provider = form_data.get('provider')))
     
 
@@ -526,12 +542,12 @@ class CoinCrossStatusView(APIView):
         if not WalletLog.objects.filter(hash_tx=hash_tx).exists():
             return ResponseUtil.no_data(msg = 'Hash does not exist.')
         
-        wallet_handler = WalletHandler()
-        status_code, data = wallet_handler.token_cross_status(provider=provider, chain=chain, hash_tx=hash_tx)
+        wallet_handler: WalletHandler = WalletHandler()
+        status_code: int; data: dict = wallet_handler.token_cross_status(provider=provider, chain=chain, hash_tx=hash_tx)
         if status_code != 200:
             return ResponseUtil.no_data(msg = data['message'])
         
-        status = data.get('data', {}).get('status')
+        status: str = data.get('data', {}).get('status')
         if provider == 'jumper':
             if status == 'DONE':
                 status = 'SUCCESS'

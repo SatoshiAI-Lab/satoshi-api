@@ -1,3 +1,4 @@
+from typing import Any
 from rest_framework import serializers
 from users.models import UserSubscription
 from utils import constants
@@ -8,11 +9,11 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserSubscription
-        fields = '__all__'
+        fields: str = '__all__'
 
-    def validate(self, data):
-        self.message_type = data.get('message_type')
-        self.content = data.get('content')
+    def validate(self, data) -> Any:
+        self.message_type: int = data.get('message_type')
+        self.content: str = data.get('content')
 
         if self.message_type < 0 or self.message_type > 4:
             raise serializers.ValidationError({'content': 'Content must between 0 and 4.'})

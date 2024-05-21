@@ -1,11 +1,12 @@
 # urls.py
 from django.urls import path
+from django.urls.resolvers import URLPattern
 from .views import *
 
-urlpatterns = [
-    path("coin/list/", CoinListView.as_view(), name="coin-list-api"),
-    path("coin/info/", CoinInfoView.as_view(), name="coin-info-api"),
-    path("coin/search/", CoinSearchView.as_view(), name="coin-search-api"),
-    path("coin/query/", CoinQueryView.as_view(), name="coin-query-api"),
-    path("address/query/", AddressQueryView.as_view(), name="address-query-api"),
+urlpatterns: list[URLPattern] = [
+    path(route="coin/list/", view=CoinListView.as_view(), name="coin-list-api"),
+    path(route="coin/info/", view=CoinInfoView.as_view(), name="coin-info-api"),
+    path(route="coin/search/", view=CoinSearchView.as_view(), name="coin-search-api"),
+    path(route="coin/query/", view=CoinQueryView.as_view(), name="coin-query-api"),
+    path(route="address/query/", view=AddressQueryView.as_view(), name="address-query-api"),
 ]

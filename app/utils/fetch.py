@@ -1,7 +1,6 @@
 from typing import Any
 import requests
 from concurrent import futures
-import json
 
 import logging
 
@@ -22,7 +21,7 @@ class MultiFetch():
     @classmethod
     def fetch_multiple_urls(cls, headers: dict, urls: list[str]) -> dict:
         with futures.ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_url: dict = {executor.submit(cls.fetch_url, headers, url): url for url in urls}
+            future_to_url: dict[str, Any] = {executor.submit(cls.fetch_url, headers, url): url for url in urls}
             results = dict()
             for future in futures.as_completed(fs=future_to_url):
                 url: str = future_to_url[future]

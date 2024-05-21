@@ -17,8 +17,8 @@ class WalletTransactionForms(forms.Form):
 
 
 class UserSelectForms(forms.Form):
-    ids = forms.JSONField(required=True)
-    status = forms.IntegerField(required=True)
+    ids: list[dict] = forms.JSONField(required=True)
+    status: int = forms.IntegerField(required=True)
 
     def clean_ids(self):
         ids = self.cleaned_data.get('ids')

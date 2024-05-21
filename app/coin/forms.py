@@ -1,3 +1,4 @@
+from typing import Any, Literal
 from django import forms
 
 
@@ -13,28 +14,28 @@ class ListBaseForm(forms.Form):
     page_index = forms.IntegerField(min_value=1, required=False)
     page_size = forms.IntegerField(min_value=1, max_value=100, required=False)
 
-    def clean_page_index(self):
+    def clean_page_index(self) -> int:
         return self.cleaned_data.get('page_index', 1) or 1
 
-    def clean_page_size(self):
+    def clean_page_size(self) -> int:
         return self.cleaned_data.get('page_size', 20) or 20
 
 
 class CoinListForms(ListBaseForm):
     ids = forms.JSONField(required=False)
 
-    def clean_ids(self):
-        ids = self.cleaned_data.get('ids')
+    def clean_ids(self) -> list[dict] | None:
+        ids: list[dict] | None = self.cleaned_data.get('ids')
         if ids:
             for i in ids:
                 if type(i) != dict:
-                    raise forms.ValidationError('ids: wrong format')
+                    raise forms.ValidationError(message='ids: wrong format')
                 if 'id' not in i or 'type' not in i:
-                    raise forms.ValidationError('ids: wrong format')
+                    raise forms.ValidationError(message='ids: wrong format')
                 if not i['id'] or int(i['id']) < 1:
-                    raise forms.ValidationError('id: wrong format')
+                    raise forms.ValidationError(message='id: wrong format')
                 if not i['type'] or int(i['type']) < 1:
-                    raise forms.ValidationError('type: wrong format')
+                    raise forms.ValidationError(message='type: wrong format')
         return ids
     
 

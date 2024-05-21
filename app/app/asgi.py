@@ -17,13 +17,13 @@ from app.ws_middleware import TokenAuthMiddleware
 from channels.security.websocket import AllowedHostsOriginValidator
 from chat.routing import websocket_urlpatterns
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
+os.environ.setdefault(key="DJANGO_SETTINGS_MODULE", value="app.settings")
 
 application = ProtocolTypeRouter(
-    {
+    application_mapping={
         "http": get_asgi_application(),
         "websocket": AllowedHostsOriginValidator(
-            TokenAuthMiddleware(URLRouter(websocket_urlpatterns))
+            application=TokenAuthMiddleware(inner=URLRouter(routes=websocket_urlpatterns))
         ),
     }
 )

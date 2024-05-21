@@ -1,3 +1,4 @@
+from typing import Literal
 import uuid
 
 from django.db import models
@@ -15,7 +16,7 @@ class Config(BaseModel):
     ave_auth = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
-        db_table = 'config'
+        db_table: str = 'config'
 
 
 class TradeAddress(BaseModel):
@@ -29,7 +30,7 @@ class TradeAddress(BaseModel):
     is_global = models.IntegerField(default=0)
     
     class Meta:
-        db_table = 'trade_address'
+        db_table: str = 'trade_address'
 
 class TwitterUser(BaseModel):
     twitter = models.CharField(max_length=100, blank=True, null=True)
@@ -43,8 +44,8 @@ class TwitterUser(BaseModel):
     twitter_status = models.IntegerField()
 
     class Meta:
-        db_table = 'twitter_user'
-        unique_together = (('twitter_id'),)
+        db_table: str = 'twitter_user'
+        unique_together: tuple[Literal['twitter_id']] = (('twitter_id'),)
 
 class Exchange(BaseModel):    
     slug = models.CharField(max_length=30, blank=True, null=False, unique=True)
@@ -57,4 +58,4 @@ class Exchange(BaseModel):
     announcement_order = models.IntegerField()
 
     class Meta:
-        db_table = 'exchange'
+        db_table: str = 'exchange'

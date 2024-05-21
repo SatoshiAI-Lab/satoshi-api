@@ -1,28 +1,29 @@
 # urls.py
 from django.urls import path
+from django.urls.resolvers import URLPattern
 from .views import *
 
-urlpatterns = [
-    path('chain/', ChainView.as_view(),  name='chain'),
-    path("register/", UserRegistrationView.as_view(), name="user-registration"),
-    path("mine/", MineView.as_view(), name="mine"),
+urlpatterns: list[URLPattern] = [
+    path(route='chain/', view=ChainView.as_view(),  name='chain'),
+    path(route="register/", view=UserRegistrationView.as_view(), name="user-registration"),
+    path(route="mine/", view=MineView.as_view(), name="mine"),
 
-    path('import-key/', ImportPrivateKeyView.as_view(), name='import-private-key'),
-    path('export-key/<str:pk>/', ExportPrivateKeyView.as_view(), name='export-private-key'),
-    path('update-wallet-name/<str:pk>/', UpdateWalletNameView.as_view(), name='update-wallet-name'),
-    path('wallet-delete/<str:pk>/', DeleteWalletView.as_view(), name='wallet-delete'),
-    path('wallet-balance/<str:address>/', WalletBalanceAPIView.as_view(), name='wallet-balance'),
-    path('wallet/', WalletAPIView.as_view(), name='wallet-api'),
+    path(route='import-key/', view=ImportPrivateKeyView.as_view(), name='import-private-key'),
+    path(route='export-key/<str:pk>/', view=ExportPrivateKeyView.as_view(), name='export-private-key'),
+    path(route='update-wallet-name/<str:pk>/', view=UpdateWalletNameView.as_view(), name='update-wallet-name'),
+    path(route='wallet-delete/<str:pk>/', view=DeleteWalletView.as_view(), name='wallet-delete'),
+    path(route='wallet-balance/<str:address>/', view=WalletBalanceAPIView.as_view(), name='wallet-balance'),
+    path(route='wallet/', view=WalletAPIView.as_view(), name='wallet-api'),
 
-    path('account/type/', AccountTypeView.as_view(), name='account-type'),
-    path('coin/select/', UserSelectView.as_view(),  name='coin-select'),
+    path(route='account/type/', view=AccountTypeView.as_view(), name='account-type'),
+    path(route='coin/select/', view=UserSelectView.as_view(),  name='coin-select'),
 
-    path('hash/status/', HashStatusAPIView.as_view(),  name='hash-status'),
-    path('wallet-transaction/<str:pk>/', WalletTransactionView.as_view(), name='wallet-transaction'),
-    path('coin/create/<str:pk>/', CreateTokenView.as_view(),  name='coin-create'),
-    path('coin/mint/<str:pk>/', MintTokenView.as_view(),  name='coin-mint'),
+    path(route='hash/status/', view=HashStatusAPIView.as_view(),  name='hash-status'),
+    path(route='wallet-transaction/<str:pk>/', view=WalletTransactionView.as_view(), name='wallet-transaction'),
+    path(route='coin/create/<str:pk>/', view=CreateTokenView.as_view(),  name='coin-create'),
+    path(route='coin/mint/<str:pk>/', view=MintTokenView.as_view(),  name='coin-mint'),
 
-    path('coin/cross-quote/', CoinCrossQuoteView.as_view(), name='coin-cross-quote'),
-    path('coin/cross/<str:pk>/', CoinCrossView.as_view(), name='coin-cross'),
-    path('coin/cross-status/', CoinCrossStatusView.as_view(), name='coin-cross-status'),
+    path(route='coin/cross-quote/', view=CoinCrossQuoteView.as_view(), name='coin-cross-quote'),
+    path(route='coin/cross/<str:pk>/', view=CoinCrossView.as_view(), name='coin-cross'),
+    path(route='coin/cross-status/', view=CoinCrossStatusView.as_view(), name='coin-cross-status'),
 ]

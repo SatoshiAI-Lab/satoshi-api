@@ -5,22 +5,26 @@ import json
 import os
 from eth_typing import ChecksumAddress
 import requests
-from eth_account import Account
-from web3 import Web3
 import re
 from base58 import b58decode
+
+from web3 import Web3
+from web3.contract.contract import Contract
 
 import aiohttp
 from aiohttp import ClientTimeout
 import asyncio
 
-from web3.contract.contract import Contract
+from eth_account import Account
+from eth_account.signers.local import (
+    LocalAccount,
+)
 
 from utils import constants
 
 import logging
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 def retry(retries: int=3, delay: int=1):
@@ -33,7 +37,6 @@ def retry(retries: int=3, delay: int=1):
                 except Exception as e:
                     if attempt == retries:
                         return
-                    # await asyncio.sleep(delay)
                     delay *= 2  # Exponential backoff
         return wrapped_f
     return wrapper
@@ -92,7 +95,7 @@ class WalletHandler():
 
         async with session.post(url=rpc_url, data=payload, headers={"Content-Type": "application/json"}) as response:
             if response.status == 200:
-                data: dict = await response.json()
+                data: dict[str, Any] = await response.json()
                 code: Any = data.get('result')
                 if code and code != '0x':
                     return 'unknown'
@@ -102,7 +105,7 @@ class WalletHandler():
                 return 'unknown'
 
     async def multi_account_type_exclude_token(self, address: str, chain_list: list[str]) -> dict:
-        results: dict = {}
+        results: dict[str, Any] = {}
         async with aiohttp.ClientSession() as session:
             tasks: list[Coroutine[Any, Any, Literal['unknown', 'user']]] = [self.account_type_exclude_token(address=address, chain=chain, session=session) for chain in chain_list]
             data: list[Literal['unknown', 'user']] = await asyncio.gather(*tasks)
@@ -120,20 +123,20 @@ class WalletHandler():
                 return
             if response.status_code != 200:
                 return 
-            data: dict = json.loads(s=response.text)['data']
-            secretKey, publicKey = data.get('secretKey'), data.get('publicKey')
+            data: dict[str, Any] = response.json().get('data', {})
+            secretKey: str | None; publicKey: str | None = data.get('secretKey'), data.get('publicKey')
             address: str = publicKey
         else:
-            account = Account.create()
-            secretKey = account.key.hex()
-            publicKey = account._key_obj.public_key
+            account: LocalAccount = Account.create()
+            secretKey: str = account.key.hex()
+            publicKey: bytes = account._key_obj.public_key
             address: str = publicKey.to_checksum_address()
-            publicKey = publicKey.to_hex()
+            publicKey: str = publicKey.to_hex()
         return secretKey, publicKey, address
     
     async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict:
         tasks: list = []
-        results: dict = {}
+        results: dict[str, Any] = {}
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
@@ -144,7 +147,7 @@ class WalletHandler():
             for result in completed_tasks:
                 if isinstance(result, Exception):
                     continue
-                chain, address, data = result
+                chain: str; address: str; data: dict[str, Any] = result
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
@@ -156,11 +159,11 @@ class WalletHandler():
             name = chain,
             logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png",
         )
-        json_data: dict = dict(address=address, value=0, tokens=[], chain=chain_data)
+        json_data: dict[str, Any] = dict(address=address, value=0, tokens=[], chain=chain_data)
         if chain == 'merlin':
-            res: dict | None = await self.get_balances_from_merlin(chain=chain, address=address, session=session)
+            res: dict[str, Any] | None = await self.get_balances_from_merlin(chain=chain, address=address, session=session)
         else:
-            res: dict | None = await self.get_balances_from_cqt(chain=chain, address=address, session=session)
+            res: dict[str, Any] | None = await self.get_balances_from_cqt(chain=chain, address=address, session=session)
         if res:
             json_data = res
         return (chain, address, json_data)
@@ -184,12 +187,12 @@ class WalletHandler():
         network_name: str | None = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
-        res: dict | None = await self.request_balances_from_cqt(network_name, address, session)
+        res: dict[str, Any] | None = await self.request_balances_from_cqt(network_name, address, session)
         if not res:
             return
         chain_id: str = res['data']['chain_id']
         chain_name: str = res['data']['chain_name']
-        items: dict = res['data']['items']
+        items: dict[str, Any] = res['data']['items']
         tokens: list = []
         value: int = 0
         chain_data = dict(
@@ -213,7 +216,7 @@ class WalletHandler():
                 logo = item['logo_url'],
             ))
             value += item.get('quote') or 0
-        json_data: dict = dict(address=address, value=value, tokens=tokens, chain=chain_data)
+        json_data: dict[str, Any] = dict(address=address, value=value, tokens=tokens, chain=chain_data)
         return json_data
     
     @retry(retries=3)
@@ -229,14 +232,14 @@ class WalletHandler():
                 response.raise_for_status()
 
     async def get_balances_from_merlin(self, chain: str, address: str, session: aiohttp.ClientSession) -> dict | None:
-        res: dict | None = await self.request_balances_from_merlin(address, session)
+        res: dict[str, Any] | None = await self.request_balances_from_merlin(address, session)
         if not res:
             return
         
         items: list = res.get('result', {}).get('data', {}).get('json', [])
         tokens: list = []
         value: int | None = None
-        chain: dict = dict(
+        chain: dict[str, Any] = dict(
             id = str(object=constants.CHAIN_DICT[chain]['id']),
             name = chain,
             logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png",
@@ -253,7 +256,7 @@ class WalletHandler():
                 price_change_24h = None,
                 logo = None,
             ))
-        json_data: dict = dict(address=address, value=value, tokens=tokens, chain=chain)
+        json_data: dict[str, Any] = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
     def token_transaction(self, chain: str, private_key: str, input_token: str, output_token: str, amount: str, slippageBps: int) -> str | None:
@@ -279,7 +282,7 @@ class WalletHandler():
             if response.status_code != 200:
                 return 
 
-            data: dict = response.json()
+            data: dict[str, Any] = response.json()
             hash_tx = data.get('data', {}).get('trx_hash')
         else:
             zero_address: str = constants.ZERO_ADDRESS
@@ -305,7 +308,7 @@ class WalletHandler():
             if response.status_code != 200:
                 return 
 
-            data: dict = response.json()
+            data: dict[str, Any] = response.json()
             hash_tx = data.get('data', {}).get('trx_hash')
         return hash_tx
     
@@ -359,7 +362,7 @@ class WalletHandler():
             return
         if response.status_code != 200:
             return data
-        data: dict | None = response.json().get('data', {})
+        data: dict[str, Any] | None = response.json().get('data', {})
         return data
     
     def get_address_from_hash(self, chain: str, hash_tx: str) -> None | str:
@@ -367,7 +370,7 @@ class WalletHandler():
         if chain == 'solana':
             url: str = f"{self.sol_domain}/token/address?create_trx_hash={hash_tx}"
 
-            payload: dict = {}
+            payload: dict[str, Any] = {}
             headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
@@ -404,7 +407,7 @@ class WalletHandler():
                 return hash_tx, address
             if response.status_code != 200:
                 return hash_tx, address
-            data: dict = response.json().get('data', dict())
+            data: dict[str, Any] = response.json().get('data', dict())
             hash_tx = data.get('create_trx_hash')
             address = self.get_address_from_hash(chain=chain, hash_tx=hash_tx)
         else:
@@ -428,7 +431,7 @@ class WalletHandler():
                 return hash_tx, address
             if response.status_code != 200:
                 return hash_tx, address
-            data: dict = response.json().get('data', dict())
+            data: dict[str, Any] = response.json().get('data', dict())
             hash_tx = data.get('trx_hash')
             address = data.get('token_address')
         return hash_tx, address
@@ -453,7 +456,7 @@ class WalletHandler():
                 return
             if response.status_code != 200:
                 return hash_tx
-            data: dict = response.json().get('data', dict())
+            data: dict[str, Any] = response.json().get('data', dict())
             hash_tx = data.get('mint_trx_hash')
         return hash_tx
         

@@ -1,14 +1,15 @@
+from typing import Literal
 from django.contrib import admin
 from chat.models import Message, ChatRoom
 
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
-    list_display = ("id", "show_members")
+    list_display: tuple[Literal['id'], Literal['show_members']] = ("id", "show_members")
 
-    def show_members(self, obj):
-        output = ", ".join(
-            f"{str(member)} == {str(member.id)}" for member in obj.members.all()
+    def show_members(self, obj: ChatRoom) -> str:
+        output: str = ", ".join(
+            f"{str(object=member)} == {str(object=member.id)}" for member in obj.members.all()
         )
         return output
 
@@ -17,4 +18,4 @@ class ChatRoomAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ("user", "room", "id", "created_at")
+    list_display: tuple[Literal['user'], Literal['room'], Literal['id'], Literal['created_at']] = ("user", "room", "id", "created_at")

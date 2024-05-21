@@ -13,28 +13,29 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import datetime
 import os
 from pathlib import Path
+from typing import Any, Never
 
 from celery import Celery
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY: str | None = os.getenv(key="SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.getenv("DEBUG", False))
+DEBUG = o=os.getenv(key="DEBUG", default=False)
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS: list[str] = ["*"]
 
 
 # Application definition
 
-INSTALLED_APPS = [
+INSTALLED_APPS: list[str] = [
     "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -54,7 +55,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
 ]
 
-MIDDLEWARE = [
+MIDDLEWARE: list[str] = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -67,9 +68,9 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = ()
+CORS_ORIGIN_ALLOW_ALL: bool = True
+CORS_ALLOW_CREDENTIALS: bool = True
+CORS_ORIGIN_WHITELIST: tuple[()] = ()
 CORS_ALLOW_METHODS = (
     'DELETE',
     'GET',
@@ -97,9 +98,9 @@ CORS_ALLOW_HEADERS = (
     'taloveToken',
 )
 
-ROOT_URLCONF = "app.urls"
+ROOT_URLCONF: str = "app.urls"
 
-TEMPLATES = [
+TEMPLATES: list[dict[str, Any]] = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [],
@@ -115,48 +116,48 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "app.wsgi.application"
+WSGI_APPLICATION: str = "app.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
+DATABASES: dict[str, dict[str, Any]] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "HOST": os.getenv("POSTGRES_HOST"),
-        "PORT": os.getenv("POSTGRES_PORT"),
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
+        "HOST": os.getenv(key="POSTGRES_HOST"),
+        "PORT": os.getenv(key="POSTGRES_PORT"),
+        "NAME": os.getenv(key="POSTGRES_DB"),
+        "USER": os.getenv(key="POSTGRES_USER"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
         "CONN_MAX_AGE": 300,
     },
     "resource": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "HOST": os.getenv("RESOURCE_HOST"),
-        "PORT": os.getenv("RESOURCE_PORT"),
-        "NAME": os.getenv("RESOURCE_DB"),
-        "USER": os.getenv("RESOURCE_USER"),
-        "PASSWORD": os.getenv("RESOURCE_PASSWORD"),
+        "HOST": os.getenv(key="RESOURCE_HOST"),
+        "PORT": os.getenv(key="RESOURCE_PORT"),
+        "NAME": os.getenv(key="RESOURCE_DB"),
+        "USER": os.getenv(key="RESOURCE_USER"),
+        "PASSWORD": os.getenv(key="RESOURCE_PASSWORD"),
         "CONN_MAX_AGE": 300,
     },
     'coin_source': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        "HOST": os.getenv("SOURCE_HOST"),
-        "PORT": os.getenv("SOURCE_PORT"),
-        "NAME": os.getenv("SOURCE_DB"),
-        "USER": os.getenv("SOURCE_USER"),
-        "PASSWORD": os.getenv("SOURCE_PASSWORD"),
+        "HOST": os.getenv(key="SOURCE_HOST"),
+        "PORT": os.getenv(key="SOURCE_PORT"),
+        "NAME": os.getenv(key="SOURCE_DB"),
+        "USER": os.getenv(key="SOURCE_USER"),
+        "PASSWORD": os.getenv(key="SOURCE_PASSWORD"),
         "CONN_MAX_AGE": 300,
     },
 }
 
-DATABASE_ROUTERS = ['app.database_router.DatabaseAppsRouter']
+DATABASE_ROUTERS: list[str] = ['app.database_router.DatabaseAppsRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
+AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
@@ -175,34 +176,34 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE: str = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE: str = "UTC"
 
-USE_I18N = True
+USE_I18N: bool = True
 
-USE_TZ = True
+USE_TZ: bool = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL: str = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_AUTO_FIELD: str = "django.db.models.BigAutoField"
 
 
-app = Celery("app")
-app.config_from_object("django.conf:settings", namespace="CELERY")
+app: Celery = Celery(main="app")
+app.config_from_object(obj="django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
-CACHES = {
+CACHES: dict[str, dict[str, Any]] = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL"),
+        "LOCATION": os.getenv(key="REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "CONNECTION_POOL_KWARGS": {
@@ -213,39 +214,39 @@ CACHES = {
     },
 }
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "vol/")
-MEDIA_URL = "/media/"
+MEDIA_ROOT: str = os.path.join(BASE_DIR, "vol/")
+MEDIA_URL: str = "/media/"
 
-BROKER_URL = os.getenv("REDIS_URL")
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
-CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE")
+BROKER_URL: str | None = os.getenv(key="REDIS_URL")
+CELERY_RESULT_BACKEND: str | None = os.getenv(key="REDIS_URL")
+CELERY_ACCEPT_CONTENT: list[str] = ["application/json"]
+CELERY_TASK_SERIALIZER: str = "json"
+CELERY_RESULT_SERIALIZER: str = "json"
+CELERY_TIMEZONE: str | None = os.getenv(key="CELERY_TIMEZONE")
 
-REST_FRAMEWORK = {
+REST_FRAMEWORK: dict[str, Any] = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     'EXCEPTION_HANDLER': 'utils.response_util.custom_exception_handler',
 }
 
-SIMPLE_JWT = {
+SIMPLE_JWT: dict[str, datetime.timedelta] = {
     'ACCESS_TOKEN_LIFETIME': datetime.timedelta(days=30),
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=90),
 }
 
-AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL: str = "users.User"
 
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False
-APPEND_SLASH=False
+ACCOUNT_AUTHENTICATION_METHOD: str = "email"
+ACCOUNT_EMAIL_REQUIRED: bool = True
+ACCOUNT_UNIQUE_EMAIL: bool = True
+ACCOUNT_USERNAME_REQUIRED: bool = False
+APPEND_SLASH: bool = False
 
-ASGI_APPLICATION = "app.asgi.application"
+ASGI_APPLICATION: str = "app.asgi.application"
 
-CHANNEL_LAYERS = {
+CHANNEL_LAYERS: dict[str, dict[str, Any]] = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
@@ -254,27 +255,27 @@ CHANNEL_LAYERS = {
     },
 }
 
-LOG_DIR = os.path.join(BASE_DIR, "logs")  # Set your log directory as needed
+LOG_DIR: str = os.path.join(BASE_DIR, "logs")  # Set your log directory as needed
 
 # Ensure the log directory exists
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+if not os.path.exists(path=LOG_DIR):
+    os.makedirs(name=LOG_DIR)
 
-INFO_LOG_DIR = os.path.join(LOG_DIR, "info")
-WARNING_LOG_DIR = os.path.join(LOG_DIR, "warning")
-ERROR_LOG_DIR = os.path.join(LOG_DIR, "error")
-CRITICAL_LOG_DIR = os.path.join(LOG_DIR, "critical")
+INFO_LOG_DIR: str = os.path.join(LOG_DIR, "info")
+WARNING_LOG_DIR: str = os.path.join(LOG_DIR, "warning")
+ERROR_LOG_DIR: str = os.path.join(LOG_DIR, "error")
+CRITICAL_LOG_DIR: str = os.path.join(LOG_DIR, "critical")
 
-if not os.path.exists(INFO_LOG_DIR):
-    os.makedirs(INFO_LOG_DIR)
-if not os.path.exists(WARNING_LOG_DIR):
-    os.makedirs(WARNING_LOG_DIR)
-if not os.path.exists(ERROR_LOG_DIR):
-    os.makedirs(ERROR_LOG_DIR)
-if not os.path.exists(CRITICAL_LOG_DIR):
-    os.makedirs(CRITICAL_LOG_DIR)
+if not os.path.exists(path=INFO_LOG_DIR):
+    os.makedirs(name=INFO_LOG_DIR)
+if not os.path.exists(path=WARNING_LOG_DIR):
+    os.makedirs(name=WARNING_LOG_DIR)
+if not os.path.exists(path=ERROR_LOG_DIR):
+    os.makedirs(name=ERROR_LOG_DIR)
+if not os.path.exists(path=CRITICAL_LOG_DIR):
+    os.makedirs(name=CRITICAL_LOG_DIR)
 
-LOGGING = {
+LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {

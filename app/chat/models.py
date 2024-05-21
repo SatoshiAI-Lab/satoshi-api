@@ -9,14 +9,14 @@ class ChatRoom(models.Model):
     id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False, unique=True
     )
-    members = models.ManyToManyField(User, related_name="chat_rooms")
+    members = models.ManyToManyField(to=User, related_name="chat_rooms")
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering: list[str] = ["-created_at"]
 
     def __str__(self) -> str:
-        return str(self.id)
+        return str(object=self.id)
 
 
 class Message(models.Model):
@@ -41,7 +41,7 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering: list[str] = ["created_at"]
 
     def __str__(self) -> str:
         return self.content
