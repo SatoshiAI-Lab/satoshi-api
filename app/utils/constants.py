@@ -1,7 +1,10 @@
-ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-SOL_ADDRESS = 'So11111111111111111111111111111111111111112'
+from typing import Any
 
-MESSAGE_TYPE_DICT = {
+
+ZERO_ADDRESS: str = '0x0000000000000000000000000000000000000000'
+SOL_ADDRESS: str = 'So11111111111111111111111111111111111111112'
+
+MESSAGE_TYPE_DICT: dict[int, str] = {
     0: 'news',
     1: "twitter",
     2: "announcement",
@@ -9,7 +12,7 @@ MESSAGE_TYPE_DICT = {
     4: "pool"
 }
 
-DEFAULT_IDS = [
+DEFAULT_IDS: list[dict[str, int]] = [
     {
         'type': 1,
         'id': 1
@@ -44,16 +47,16 @@ DEFAULT_IDS = [
     }
 ]
 
-DEFAULT_PLATFORM = 'SOL'
+DEFAULT_PLATFORM: str = 'SOL'
 
-DEFAULT_CHAIN = 'solana'
+DEFAULT_CHAIN: str = 'solana'
 
-PLATFORM_LIST = [
+PLATFORM_LIST: list[str] = [
     'EVM',
     "SOL",
 ]
 
-CHAIN_DICT = {
+CHAIN_DICT: dict[str, dict[str, str]] = {
     "solana": {
         'platform': 'SOL',
         'id': '1399811149',
@@ -199,12 +202,12 @@ CHAIN_DICT = {
     },
 }
 
-CQT_CHAIN_DICT = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT if CHAIN_DICT[c]['cqt']}
-ANKR_CHAIN_DICT = {CHAIN_DICT[c]['ankr']:c for c in CHAIN_DICT if CHAIN_DICT[c]['ankr']}
-GECKO_CHAIN_DICT = {CHAIN_DICT[c]['gecko']:c for c in CHAIN_DICT if CHAIN_DICT[c]['gecko']}
-AVE_CHAIN_DICT = {CHAIN_DICT[c]['ave']:c for c in CHAIN_DICT if CHAIN_DICT[c]['ave']}
+CQT_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]['cqt']:c for c in CHAIN_DICT if CHAIN_DICT[c]['cqt']}
+ANKR_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]['ankr']:c for c in CHAIN_DICT if CHAIN_DICT[c]['ankr']}
+GECKO_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]['gecko']:c for c in CHAIN_DICT if CHAIN_DICT[c]['gecko']}
+AVE_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]['ave']:c for c in CHAIN_DICT if CHAIN_DICT[c]['ave']}
 
-ERC20_ABI = [
+ERC20_ABI: list[dict[str, Any]] = [
     {"inputs": [],"name": "name","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},
     {"inputs": [],"name": "symbol","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},
     {'constant': True, 'inputs': [], 'name': 'totalSupply', 'outputs': [{'name': '', 'type': 'uint256'}], 'payable': False, 'type': 'function'},
@@ -217,4 +220,4 @@ ERC20_ABI = [
     {'anonymous': False, 'inputs': [{'indexed': True, 'name': 'owner', 'type': 'address'}, {'indexed': True, 'name': 'spender', 'type': 'address'}, {'indexed': False, 'name': 'value', 'type': 'uint256'}], 'name': 'Approval', 'type': 'event'}
 ]
 
-CROSS_PROVIDERS = ['okx', 'jumper']
+CROSS_PROVIDERS: list[str] = ['okx', 'jumper']

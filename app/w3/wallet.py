@@ -1,7 +1,9 @@
+from typing import Any, Coroutine, Literal
 from django.core.cache import cache
 
 import json
 import os
+from eth_typing import ChecksumAddress
 import requests
 from eth_account import Account
 from web3 import Web3
@@ -12,16 +14,18 @@ import aiohttp
 from aiohttp import ClientTimeout
 import asyncio
 
+from web3.contract.contract import Contract
+
 from utils import constants
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
-def retry(retries=3, delay=1):
-    def wrapper(func):
-        async def wrapped_f(*args, **kwargs):
+def retry(retries: int=3, delay: int=1):
+    def wrapper(func: Any):
+        async def wrapped_f(*args, **kwargs) -> Any | None:
             nonlocal delay
             for attempt in range(1, retries + 1):
                 try:
@@ -37,15 +41,15 @@ def retry(retries=3, delay=1):
 
 class WalletHandler():
     def __init__(self) -> None:
-        self.evm_domain = os.getenv('WEB3_EVM_API')
-        self.sol_domain = os.getenv('WEB3_SOL_API')
-        self.vybenetwork_domain = os.getenv('VYBENETWORK_DOMAIN')
+        self.evm_domain: str | None = os.getenv(key='WEB3_EVM_API')
+        self.sol_domain: str | None = os.getenv(key='WEB3_SOL_API')
+        self.vybenetwork_domain: str | None = os.getenv(key='VYBENETWORK_DOMAIN')
 
-    async def identify_platform(self, address):
-        if re.match(r'^0x[a-fA-F0-9]{40}$', address):
+    async def identify_platform(self, address: str) -> Literal['EVM'] | Literal['SOL'] | Literal['']:
+        if re.match(pattern=r'^0x[a-fA-F0-9]{40}$', string=address):
             return 'EVM'
         try:
-            decoded = b58decode(address)
+            decoded: bytes = b58decode(address)
             if len(decoded) in [32, 64]:
                 return 'SOL'
         except ValueError:
@@ -53,11 +57,11 @@ class WalletHandler():
         return ""
 
     @classmethod
-    def account_type(cls, address, chain):
-        w3 = Web3(Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
+    def account_type(cls, address: str, chain: str) -> Literal['token'] | Literal['unknown'] | Literal['user']:
+        w3 = Web3(provider=Web3.HTTPProvider(constants.CHAIN_DICT[chain]['rpc']))
 
-        def is_erc20_contract(a):
-            contract = w3.eth.contract(address=Web3.to_checksum_address(a), abi=constants.ERC20_ABI)
+        def is_erc20_contract(a) -> bool:
+            contract: Contract = w3.eth.contract(address=Web3.to_checksum_address(a), abi=constants.ERC20_ABI)
             try:
                 contract.functions.totalSupply().call()
                 contract.functions.balanceOf(a).call()
@@ -66,9 +70,9 @@ class WalletHandler():
             except:
                 return False
 
-        address = Web3.to_checksum_address(address)
-        if w3.eth.get_code(address):
-            if is_erc20_contract(address):
+        address: ChecksumAddress = Web3.to_checksum_address(address)
+        if w3.eth.get_code(account=address):
+            if is_erc20_contract(a=address):
                 return 'token'
             else:
                 return 'unknown'
@@ -76,20 +80,20 @@ class WalletHandler():
             return 'user'
         
     @classmethod
-    async def account_type_exclude_token(cls, address, chain, session):
-        rpc_url = constants.CHAIN_DICT[chain]['rpc']
+    async def account_type_exclude_token(cls, address: str, chain: str, session: aiohttp.ClientSession) -> Literal['unknown'] | Literal['user']:
+        rpc_url: str = constants.CHAIN_DICT[chain]['rpc']
 
-        payload = json.dumps({
+        payload: str = json.dumps(obj={
             "jsonrpc": "2.0",
             "method": "eth_getCode",
             "params": [address, "latest"],
             "id": 1,
         })
 
-        async with session.post(rpc_url, data=payload, headers={"Content-Type": "application/json"}) as response:
+        async with session.post(url=rpc_url, data=payload, headers={"Content-Type": "application/json"}) as response:
             if response.status == 200:
-                data = await response.json()
-                code = data.get('result')
+                data: dict = await response.json()
+                code: Any = data.get('result')
                 if code and code != '0x':
                     return 'unknown'
                 else:
@@ -97,46 +101,46 @@ class WalletHandler():
             else:
                 return 'unknown'
 
-    async def multi_account_type_exclude_token(self, address, chain_list):
-        results = {}
+    async def multi_account_type_exclude_token(self, address: str, chain_list: list[str]) -> dict:
+        results: dict = {}
         async with aiohttp.ClientSession() as session:
-            tasks = [self.account_type_exclude_token(address, chain, session) for chain in chain_list]
-            data = await asyncio.gather(*tasks)
+            tasks: list[Coroutine[Any, Any, Literal['unknown', 'user']]] = [self.account_type_exclude_token(address=address, chain=chain, session=session) for chain in chain_list]
+            data: list[Literal['unknown', 'user']] = await asyncio.gather(*tasks)
             for chain, result in zip(chain_list, data):
                 results[chain] = result
         return results
 
-    def create_wallet(self, platform):
+    def create_wallet(self, platform: str) -> None | tuple[Any, Any, str]:
         if platform == 'SOL':
-            url = f"{self.sol_domain}/account/keyPair/new"
+            url: str = f"{self.sol_domain}/account/keyPair/new"
             try:
-                response = requests.request("GET", url, timeout=15)
+                response: requests.Response = requests.request(method="GET", url=url, timeout=15)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return 
-            data = json.loads(response.text)['data']
+            data: dict = json.loads(s=response.text)['data']
             secretKey, publicKey = data.get('secretKey'), data.get('publicKey')
-            address = publicKey
+            address: str = publicKey
         else:
             account = Account.create()
             secretKey = account.key.hex()
             publicKey = account._key_obj.public_key
-            address = publicKey.to_checksum_address()
+            address: str = publicKey.to_checksum_address()
             publicKey = publicKey.to_hex()
         return secretKey, publicKey, address
     
-    async def multi_get_balances(self, address_list, chain_list):
-        tasks = []
-        results = {}
+    async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict:
+        tasks: list = []
+        results: dict = {}
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
-                    if await self.identify_platform(address) == constants.CHAIN_DICT[chain]['platform']:
-                        tasks.append(self.get_balances(chain, address, session))
+                    if await self.identify_platform(address=address) == constants.CHAIN_DICT[chain]['platform']:
+                        tasks.append(self.get_balances(chain=chain, address=address, session=session))
 
-            completed_tasks = await asyncio.gather(*tasks, return_exceptions=True)
+            completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
             for result in completed_tasks:
                 if isinstance(result, Exception):
                     continue
@@ -146,149 +150,143 @@ class WalletHandler():
                 results[chain][address] = data
         return results
     
-    async def get_balances(self, chain, address, session):
+    async def get_balances(self, chain: str, address: str, session: aiohttp.ClientSession) -> tuple[str, str, dict]:
         chain_data = dict(
-            id = str(constants.CHAIN_DICT[chain]['id']),
+            id = str(object=constants.CHAIN_DICT[chain]['id']),
             name = chain,
-            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+            logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png",
         )
-        json_data = dict(address=address, value=0, tokens=[], chain=chain_data)
+        json_data: dict = dict(address=address, value=0, tokens=[], chain=chain_data)
         if chain == 'merlin':
-            res = await self.get_balances_from_merlin(chain, address, session)
+            res: dict | None = await self.get_balances_from_merlin(chain=chain, address=address, session=session)
         else:
-            res = await self.get_balances_from_cqt(chain, address, session)
+            res: dict | None = await self.get_balances_from_cqt(chain=chain, address=address, session=session)
         if res:
             json_data = res
         return (chain, address, json_data)
     
     @retry(retries=3)
-    async def request_balances_from_cqt(self, chain, address, session):
-        url = f"{os.getenv('CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/"
-        headers = {
+    async def request_balances_from_cqt(self, chain: str, address: str, session: aiohttp.ClientSession) -> dict | None:
+        url: str = f"{os.getenv(key='CQT_DOMAIN')}/{chain}/address/{address}/balances_v2/"
+        headers: dict[str, str] = {
             "Authorization": f"Bearer {os.getenv('CQT_KEY')}",
             "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
         }
 
         # timeout = ClientTimeout(connect=3, sock_read=6)
-        async with session.get(url, headers=headers, timeout=6) as response:
+        async with session.get(url=url, headers=headers, timeout=6) as response:
             if response.status == 200:
                 return await response.json()
             else:
                 response.raise_for_status()
             
-    async def get_balances_from_cqt(self, chain, address, session):
-        network_name = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
+    async def get_balances_from_cqt(self, chain: str, address: str, session: aiohttp.ClientSession) -> dict | None:
+        network_name: str | None = constants.CHAIN_DICT.get(chain, dict()).get('cqt')
         if not network_name:
             return
-        res = await self.request_balances_from_cqt(network_name, address, session)
+        res: dict | None = await self.request_balances_from_cqt(network_name, address, session)
         if not res:
             return
-        chain_id = res['data']['chain_id']
-        chain_name = res['data']['chain_name']
-        items = res['data']['items']
-        tokens = []
-        value = 0
+        chain_id: str = res['data']['chain_id']
+        chain_name: str = res['data']['chain_name']
+        items: dict = res['data']['items']
+        tokens: list = []
+        value: int = 0
         chain_data = dict(
-            id = str(chain_id),
+            id = str(object=chain_id),
             name = constants.CQT_CHAIN_DICT[chain_name],
-            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
+            logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{constants.CQT_CHAIN_DICT[chain_name]}.png",
         )
         for item in items:
-            price_usd = item.get('quote_rate')
-            price_usd_24h = item.get('quote_rate_24h')
-            price_change = round((price_usd-price_usd_24h)/price_usd_24h*100, 4) if price_usd and price_usd_24h else None
+            price_usd: float | None = item.get('quote_rate')
+            price_usd_24h: float | None = item.get('quote_rate_24h')
+            price_change: float | None = round(number=(price_usd-price_usd_24h)/price_usd_24h*100, ndigits=4) if price_usd and price_usd_24h else None
             tokens.append(dict(
                 symbol = item['contract_ticker_symbol'],
                 name = item['contract_name'],
                 decimals = item['contract_decimals'],
                 amount = item['balance'],
-                address = re.sub(r'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|11111111111111111111111111111111', constants.ZERO_ADDRESS, item['contract_address']),
-                # priceUsd = price_usd,
-                # valueUsd = item['quote'],
+                address = re.sub(pattern=r"0xe{40}|0xe{41}|1{32}", repl=constants.ZERO_ADDRESS, string=item['contract_address']),
                 price_usd = price_usd,
                 value_usd = item['quote'],
-                # price_change = price_change,
                 price_change_24h = price_change,
                 logo = item['logo_url'],
             ))
             value += item.get('quote') or 0
-        json_data = dict(address=address, value=value, tokens=tokens, chain=chain_data)
+        json_data: dict = dict(address=address, value=value, tokens=tokens, chain=chain_data)
         return json_data
     
     @retry(retries=3)
-    async def request_balances_from_merlin(self, address, session):
-        url = os.getenv('MERLIN_DOMAIN')
-        headers = {'Content-Type': 'application/json'}
+    async def request_balances_from_merlin(self, address: str, session: aiohttp.ClientSession) -> dict | None:
+        url: str | None = os.getenv(key='MERLIN_DOMAIN')
+        headers: dict[str, str] = {'Content-Type': 'application/json'}
 
         timeout = ClientTimeout(connect=3, sock_read=6)
-        async with session.get(f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=timeout) as response:
+        async with session.get(url=f"{url}/address.getAddressTokenBalance?input=%7B%22json%22%3A%7B%22address%22%3A%22{address}%22%2C%22tokenType%22%3A%22erc20%22%7D%7D", headers=headers, timeout=timeout) as response:
             if response.status == 200:
                 return await response.json()
             else:
                 response.raise_for_status()
 
-    async def get_balances_from_merlin(self, chain, address, session):
-        res = await self.request_balances_from_merlin(address)
+    async def get_balances_from_merlin(self, chain: str, address: str, session: aiohttp.ClientSession) -> dict | None:
+        res: dict | None = await self.request_balances_from_merlin(address, session)
         if not res:
             return
         
-        items = res.get('result', {}).get('data', {}).get('json', [])
-        tokens = []
-        value = None
-        chain = dict(
-            id = str(constants.CHAIN_DICT[chain]['id']),
+        items: list = res.get('result', {}).get('data', {}).get('json', [])
+        tokens: list = []
+        value: int | None = None
+        chain: dict = dict(
+            id = str(object=constants.CHAIN_DICT[chain]['id']),
             name = chain,
-            logo = f"{os.getenv('S3_DOMAIN')}/chains/logo/{chain}.png",
+            logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png",
         )
         for item in items:
             tokens.append(dict(
                 symbol = item['symbol'],
                 name = item['name'],
                 decimals = item['decimals'],
-                amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
+                amount = int(float(x=item.get('balance', 0)))/(10 ** int(x=item['decimals'])),
                 address = item['token_address'],
-                # priceUsd = None,
-                # valueUsd = None,
                 price_usd = None,
                 value_usd = None,
                 price_change_24h = None,
-                # price_change = None,
                 logo = None,
             ))
-        json_data = dict(address=address, value=value, tokens=tokens, chain=chain)
+        json_data: dict = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
-    def token_transaction(self, chain, private_key, input_token, output_token, amount, slippageBps):
-        hash_tx = None
+    def token_transaction(self, chain: str, private_key: str, input_token: str, output_token: str, amount: str, slippageBps: int) -> str | None:
+        hash_tx: str | None = None
         if chain == 'solana':
-            url = f"{self.sol_domain}/swap"
+            url: str = f"{self.sol_domain}/swap"
 
-            payload = json.dumps(dict(
+            payload: str = json.dumps(obj=dict(
                 secretKey = private_key,
                 inputMint = input_token.replace(constants.ZERO_ADDRESS, constants.SOL_ADDRESS),
                 outputMint = output_token.replace(constants.ZERO_ADDRESS, constants.SOL_ADDRESS),
                 amount = amount,
                 slippageBps = slippageBps,
             ))
-            headers = {
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+                response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=60)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return 
 
-            data = json.loads(response.text)
+            data: dict = response.json()
             hash_tx = data.get('data', {}).get('trx_hash')
         else:
-            zero_address = constants.ZERO_ADDRESS
+            zero_address: str = constants.ZERO_ADDRESS
             if input_token == zero_address and output_token == zero_address:
                 return
-            url = f"{self.evm_domain}/evm/swap"
-            payload = json.dumps(dict(
+            url: str = f"{self.evm_domain}/evm/swap"
+            payload: str = json.dumps(obj=dict(
                 net = chain.lower(),
                 secretKey = private_key,
                 tokenInAddress = input_token,
@@ -296,123 +294,123 @@ class WalletHandler():
                 tokenInAmount = amount,
                 slippageBps = slippageBps,
             ))
-            headers = {
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+                response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=60)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return 
 
-            data = json.loads(response.text)
+            data: dict = response.json()
             hash_tx = data.get('data', {}).get('trx_hash')
         return hash_tx
     
-    def check_hash(self, chain, data_list):
-        data = []
+    def check_hash(self, chain: str, data_list: list[dict]) -> list | None:
+        data: list = []
         if chain == 'solana':
-            url = f"{self.sol_domain}/transaction/is_success"
+            url: str = f"{self.sol_domain}/transaction/is_success"
 
-            payload = json.dumps(data_list)
-            headers = {
+            payload: str = json.dumps(obj=data_list)
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+                response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=15)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return data
-            data = json.loads(response.text).get('data', [])
+            data: list = response.json().get('data', [])
         else:
-            url = f"{self.evm_domain}/evm/transaction/is_success"
+            url: str = f"{self.evm_domain}/evm/transaction/is_success"
 
-            payload = json.dumps(dict(net=chain.lower(), list=data_list))
-            headers = {
+            payload: str = json.dumps(obj=dict(net=chain.lower(), list=data_list))
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+                response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=15)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return data
-            data = json.loads(response.text).get('data', [])
+            data: list = response.json().get('data', [])
         return data
     
-    def multi_check_hash(self, hash_data):
-        data = []
+    def multi_check_hash(self, hash_data: dict) -> dict | None:
+        data: list = []
 
-        url = f"{self.evm_domain}/evm/transaction/is_success/batch"
+        url: str = f"{self.evm_domain}/evm/transaction/is_success/batch"
 
-        payload = json.dumps(hash_data)
-        headers = {
+        payload: str = json.dumps(obj=hash_data)
+        headers: dict[str, str] = {
         'Content-Type': 'application/json',
         }
         try:
-            response = requests.request("POST", url, headers=headers, data=payload, timeout=15)
+            response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=15)
         except Exception as e:
-            logger.error(f'Request timeout: {e}')
+            logger.error(msg=f'Request timeout: {e}')
             return
         if response.status_code != 200:
             return data
-        data = json.loads(response.text).get('data', {})
+        data: dict | None = response.json().get('data', {})
         return data
     
-    def get_address_from_hash(self, chain, hash_tx):
-        data = None
+    def get_address_from_hash(self, chain: str, hash_tx: str) -> None | str:
+        data: str | None = None
         if chain == 'solana':
-            url = f"{self.sol_domain}/token/address?create_trx_hash={hash_tx}"
+            url: str = f"{self.sol_domain}/token/address?create_trx_hash={hash_tx}"
 
-            payload = {}
-            headers = {
+            payload: dict = {}
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("GET", url, headers=headers, data=payload, timeout=15)
+                response: requests.Response = requests.request(method="GET", url=url, headers=headers, data=payload, timeout=15)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return data
-            data = json.loads(response.text).get('data', {}).get('token_address')
+            data: str = response.json().get('data', {}).get('token_address')
         return data
     
-    def create_token(self, chain, private_key, name, symbol, desc, decimals, amount):
-        hash_tx = None
-        address = None
+    def create_token(self, chain: str, private_key: str, name: str, symbol: str, desc: str, decimals: int, amount: int) -> tuple[str | None, str | None]:
+        hash_tx: str | None = None
+        address: str | None = None
         if chain == 'solana':
-            url = f"{self.sol_domain}/token/create"
+            url: str = f"{self.sol_domain}/token/create"
 
-            payload = json.dumps(dict(
+            payload: str = json.dumps(obj=dict(
                 secretKey = private_key,
                 tokenName = name,
                 tokenSymbol = symbol,
                 tokenDescription = desc,
                 tokenDecimals = decimals,
             ))
-            headers = {
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+                response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=60)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
-                return
+                logger.error(msg=f'Request timeout: {e}')
+                return hash_tx, address
             if response.status_code != 200:
                 return hash_tx, address
-            data = json.loads(response.text).get('data', dict())
+            data: dict = response.json().get('data', dict())
             hash_tx = data.get('create_trx_hash')
-            address = self.get_address_from_hash(chain, hash_tx)
+            address = self.get_address_from_hash(chain=chain, hash_tx=hash_tx)
         else:
-            url = f"{self.evm_domain}/evm/token/new"
+            url: str = f"{self.evm_domain}/evm/token/new"
 
-            payload = json.dumps(dict(
+            payload: str = json.dumps(obj=dict(
                 net = chain.lower(),
                 secretKey = private_key,
                 tokenName = name,
@@ -420,57 +418,57 @@ class WalletHandler():
                 tokenDecimals = decimals,
                 mintAmount = amount,
             ))
-            headers = {
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+                response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=60)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
-                return
+                logger.error(msg=f'Request timeout: {e}')
+                return hash_tx, address
             if response.status_code != 200:
                 return hash_tx, address
-            data = json.loads(response.text).get('data', dict())
+            data: dict = response.json().get('data', dict())
             hash_tx = data.get('trx_hash')
             address = data.get('token_address')
         return hash_tx, address
     
-    def mint_token(self, chain, private_key, create_hash, mint_amount):
-        hash_tx = None
+    def mint_token(self, chain: str, private_key: str, create_hash: str, mint_amount: int) -> str | None:
+        hash_tx: str | None = None
         if chain == 'solana':
-            url = f"{self.sol_domain}/token/mint"
+            url: str = f"{self.sol_domain}/token/mint"
 
-            payload = json.dumps(dict(
+            payload: str = json.dumps(dict(
                 secretKey = private_key,
                 createTrxHash = create_hash,
                 tokenMintAmount = mint_amount,
             ))
-            headers = {
+            headers: dict[str, str] = {
             'Content-Type': 'application/json',
             }
             try:
-                response = requests.request("POST", url, headers=headers, data=payload, timeout=60)
+                response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=payload, timeout=60)
             except Exception as e:
-                logger.error(f'Request timeout: {e}')
+                logger.error(msg=f'Request timeout: {e}')
                 return
             if response.status_code != 200:
                 return hash_tx
-            data = json.loads(response.text).get('data', dict())
+            data: dict = response.json().get('data', dict())
             hash_tx = data.get('mint_trx_hash')
         return hash_tx
         
-    def token_cross_quote(self, form_data):
-        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/quote"
-        response = requests.post(target_url, json=form_data)
-        return response.status_code, response.content
+    def token_cross_quote(self, form_data: dict) -> tuple[int, dict]:
+        target_url: str = f"{os.getenv(key='WEB3_EVM_API')}/cross_chain/quote"
+        response: requests.Response = requests.post(url=target_url, json=form_data)
+        return response.status_code, response.json()
     
-    def token_cross(self, form_data):
-        provider = form_data.get('provider')
-        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/cross/{provider}"
-        response = requests.post(target_url, json=form_data)
-        return response.status_code, response.content
+    def token_cross(self, form_data: dict) -> tuple[int, dict]:
+        provider: str = form_data.get('provider')
+        target_url: str = f"{os.getenv(key='WEB3_EVM_API')}/cross_chain/cross/{provider}"
+        response: requests.Response = requests.post(url=target_url, json=form_data)
+        return response.status_code, response.json()
     
-    def token_cross_status(self, provider, chain, hash_tx):
-        target_url = f"{os.getenv('WEB3_EVM_API')}/cross_chain/state/{provider}"
-        response = requests.get(target_url, params=dict(from_net=chain, trx_hash=hash_tx))
-        return response.status_code, response.content
+    def token_cross_status(self, provider: str, chain: str, hash_tx: str) -> tuple[int, dict]:
+        target_url: str = f"{os.getenv(key='WEB3_EVM_API')}/cross_chain/state/{provider}"
+        response: requests.Response = requests.get(url=target_url, params=dict(from_net=chain, trx_hash=hash_tx))
+        return response.status_code, response.json()
