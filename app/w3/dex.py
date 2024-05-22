@@ -175,7 +175,7 @@ class DefinedAPI():
                 }
             }
             }
-            """ % (10000 if len(kw) < 40 else 0, kw)
+            """ % (2000 if len(kw) < 30 else 0, kw)
         }
         response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=json.dumps(obj=payload))
         if response.status_code != 200:
