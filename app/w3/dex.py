@@ -184,6 +184,8 @@ class DefinedAPI():
         data: list[dict[str, Any]] = []
         for d in res:
             token: dict = d.get('token', {})
+            if len(kw) < 30 and not str(token.get('symbol', '')).lower().startswith(kw.lower()):
+                continue
             coin_data: dict = dict(
                 logo = token.get('info', {}).get('imageThumbUrl'),
                 address = token.get('address'),
