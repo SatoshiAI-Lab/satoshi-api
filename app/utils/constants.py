@@ -244,6 +244,7 @@ CHAIN_DICT: dict[str, dict[str, str]] = {
     },
 }
 
+CHAIN_DICT_FROM_ID: dict[str, str] = {CHAIN_DICT[c]["id"]:c for c in CHAIN_DICT}
 CQT_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]["cqt"]:c for c in CHAIN_DICT if CHAIN_DICT[c]["cqt"]}
 ANKR_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]["ankr"]:c for c in CHAIN_DICT if CHAIN_DICT[c]["ankr"]}
 GECKO_CHAIN_DICT: dict[str, str] = {CHAIN_DICT[c]["gecko"]:c for c in CHAIN_DICT if CHAIN_DICT[c]["gecko"]}

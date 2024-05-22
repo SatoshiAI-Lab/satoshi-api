@@ -22,7 +22,7 @@ from users.permissions import OptionalAuthentication
 from utils import constants
 from utils.response_util import ResponseUtil
 
-from w3.dex import GeckoAPI, DexTools, AveAPI
+from w3.dex import GeckoAPI, DexTools, AveAPI, DefinedAPI
 from w3.wallet import WalletHandler
 
 from rest_framework.request import Request
@@ -174,40 +174,14 @@ class PoolSearchView(APIView):
     
 
 class CoinQueryView(APIView):
-    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    # @method_decorator(decorator=cache_page(timeout=1 * 60))
     def get(self, request: Request) -> Response:
         form: forms.CoinSearchForms = forms.CoinSearchForms(data=request.query_params)
         if not form.is_valid():
             return ResponseUtil.field_error(msg=list(form.errors.values())[0][0])
         kw: str = request.query_params['kw']
 
-        data: list[dict] = []
-        ave_data: list[dict] = AveAPI.search(kw=kw)
-        for d in ave_data:
-            holders: Any | None = d.get('holders')
-            if len(kw) < 40 and holders and holders < 1000:
-                continue
-            coin_data: dict = dict(
-                logo = urljoin(base=os.getenv(key='AVE_LOGO_DOMAIN'), url=d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
-                address = d['token'],
-                name = d.get('name'),
-                symbol = d.get('symbol'),
-                decimals = d.get('decimal'),
-                price_usd = d.get('current_price_usd'),
-                price_change = d.get('price_change'),
-                price_change_24h = d.get('price_change'),
-                holders = holders,
-            )
-            chain: str | None = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
-            if not chain:
-                coin_data['chain'] = dict(name=d.get('chain'), id = None, logo = None)
-                coin_data['is_supported'] = False
-                continue
-            else:
-                coin_data['chain'] = dict(name=chain, id = str(object=constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
-                coin_data['is_supported'] = True
-            data.append(coin_data)
-        
+        data: list[dict] = DefinedAPI.search(kw=kw)
         return ResponseUtil.success(data=data)
     
 
@@ -225,29 +199,7 @@ class AddressQueryView(APIView):
         account_data: dict[str, Any] = dict()
         
         if not addr_type or addr_type == 'token':
-            ave_data: list[dict] = AveAPI.search(kw=address)
-            for d in ave_data:
-                coin_data: dict[str, Any] = dict(
-                    logo = urljoin(base=os.getenv(key='AVE_LOGO_DOMAIN'), url=d['logo_url']) if d.get('logo_url') else d.get('logo_url'),
-                    address = d['token'],
-                    name = d.get('name'),
-                    symbol = d.get('symbol'),
-                    decimals = d.get('decimal'),
-                    price_usd = d.get('current_price_usd'),
-                    price_change = d.get('price_change'),
-                )
-                chain: str | None = constants.AVE_CHAIN_DICT.get(d.get('chain', ''))
-                if not chain:
-                    chain = d.get('chain')
-                    coin_data['chain'] = dict(name=chain, id = None, logo = None)
-                    coin_data['is_supported'] = False
-                    continue
-                else:
-                    coin_data['chain'] = dict(name=chain, id = str(object=constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
-                    coin_data['is_supported'] = True
-                    if chain in excluded_chains:
-                        excluded_chains.pop(chain)
-                token_data[chain] = coin_data
+            token_data: list[dict] = DefinedAPI.search(kw=address)
         
         if not addr_type or addr_type == 'account':
             wallet_handler: WalletHandler = WalletHandler()

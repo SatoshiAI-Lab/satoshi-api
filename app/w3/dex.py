@@ -1,8 +1,10 @@
 import os
+import json
 from typing import Any
 import requests
 from django.core.cache import cache
 from utils import constants
+from urllib.parse import urljoin
 
 from utils.fetch import MultiFetch
 from subscribe import models as subscribe_models
@@ -92,6 +94,7 @@ class GeckoAPI():
             telegram = info.get('telegram_handle'),
             websites = info.get('websites'),
             price_change = pool.get('price_change_percentage', {}).get('h24'),
+            price_change_24h = pool.get('price_change_percentage', {}).get('h24'),
         )
         return data
     
@@ -119,3 +122,90 @@ class AveAPI():
             return []
         res: list[dict] = response.json().get('data', {}).get('token_list', [])
         return res
+    
+
+class DefinedAPI():
+    domain: str | None = os.getenv(key='DEFINED_DOMAIN')
+    headers: dict[str, str] = {
+        'Authorization': os.getenv(key='DEFINED_KEY'),
+        'Content-Type': 'application/json'
+    }
+
+    @classmethod
+    def search(cls, kw: str) -> list[dict[str, Any]]:
+        url: str = f'{cls.domain}'
+        headers: dict[str, str] = cls.headers
+        payload: dict[str, Any] = {
+            "query": """{
+            filterTokens(
+                filters: {
+                liquidity: { gt: %s }
+                # network: [1]
+                }
+                limit: 100
+                offset: 0
+                phrase: "%s"
+            ) {
+                results {
+                change24
+                txnCount24
+                volume24
+                isScam
+                holders
+                liquidity
+                marketCap
+                priceUSD
+                pair {
+                    token0
+                    token1
+                }
+                exchanges {
+                    name
+                }
+                token {
+                    address
+                    decimals
+                    name
+                    networkId
+                    symbol
+                    info {
+                    imageThumbUrl
+                    }
+                }
+                }
+            }
+            }
+            """ % (10000 if len(kw) < 40 else 0, kw)
+        }
+        response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=json.dumps(obj=payload))
+        if response.status_code != 200:
+            return []
+        res: list[dict[str, Any]] | None = response.json().get('data', {}).get('filterTokens', {}).get('results', [])
+        data: list[dict[str, Any]] = []
+        for d in res:
+            token: dict = d.get('token', {})
+            coin_data: dict = dict(
+                logo = token.get('info', {}).get('imageThumbUrl'),
+                address = token.get('address'),
+                name = token.get('name'),
+                symbol = token.get('symbol'),
+                decimals = token.get('decimals'),
+                price_usd = d.get('priceUSD'),
+                price_change = d.get('change24'),
+                price_change_24h = d.get('change24'),
+                holders = d.get('holders'),
+                market_cap = d.get('marketCap'),
+                volume = d.get('volume24'),
+                liquidity = d.get('liquidity'),
+                is_scam = d.get('isScam'),
+            )
+            chain: str | None = constants.CHAIN_DICT_FROM_ID.get(str(token.get('networkId')))
+            if not chain:
+                coin_data['chain'] = dict(name=None, id = token.get('networkId'), logo = None)
+                coin_data['is_supported'] = False
+                continue
+            else:
+                coin_data['chain'] = dict(name=chain, id = str(object=constants.CHAIN_DICT[chain]['id']), logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png")
+                coin_data['is_supported'] = True
+            data.append(coin_data)
+        return data
