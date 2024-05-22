@@ -466,7 +466,7 @@ class CoinCrossQuoteView(APIView):
         dex_tools: DexTools = DexTools()
         token_address: str = data.get('provider_data', {}).get('cross_chain_fee_token_address', '').replace('0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', constants.ZERO_ADDRESS)
         data['provider_data']['cross_chain_fee_token'] = dex_tools.token_base(chain=form_data['fromData']['chain'], address=token_address)
-        return Response(data=data, status=status)
+        return ResponseUtil.custom(status=status, data=data, msg='OK')
         
 
 class CoinCrossView(APIView):
