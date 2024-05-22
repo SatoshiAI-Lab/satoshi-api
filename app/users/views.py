@@ -26,6 +26,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from w3.wallet import WalletHandler
+from w3.dex import DexTools
 from utils import constants
 from utils.response_util import ResponseUtil
 from rest_framework.request import Request
@@ -48,25 +49,11 @@ class MineView(APIView):
     permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
     
     def get(self, request: Request, *args, **kwargs) -> Response:
-        id: str | None; email: str | None = None, None
+        id, email = None, None
         if request.user.is_authenticated:
             id = request.user.id
             email = request.user.email
         return ResponseUtil.success(data={"id": id, "email": email})
-    
-
-class ChainView(APIView):
-    @method_decorator(decorator=cache_page(timeout=5 * 60))
-    def get(self, request: Request, *args, **kwargs) -> Response:
-        data: dict[str, list[dict] | list[str]] = {
-            "chains": [dict(
-                name=c, 
-                logo=f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{c}.png", 
-                platform = constants.CHAIN_DICT[c]['platform'],
-            ) for c in constants.CHAIN_DICT], 
-            "platforms": constants.PLATFORM_LIST,
-        }
-        return ResponseUtil.success(data=data)
 
 
 class WalletAPIView(APIView):
@@ -87,13 +74,13 @@ class WalletAPIView(APIView):
         serializer: WalletListSerializer = WalletListSerializer(wallets, many=True)
         wallet_handler: WalletHandler = WalletHandler()
 
-        balance_for_account: dict[str, Any] = asyncio.run(main=wallet_handler.multi_get_balances(address_list=[s['address'] for s in serializer.data], chain_list=chains))
+        balance_for_account: dict[str, dict[str, dict]] = asyncio.run(main=wallet_handler.multi_get_balances(address_list=[s['address'] for s in serializer.data], chain_list=chains))
         data = dict()
         for k, v in balance_for_account.items():
             res: list = []
             s_data: ReturnDict = copy.deepcopy(x=serializer.data)
             for s in s_data:
-                d: str | None = v.get(s['address'])
+                d: dict = v.get(s['address'])
                 if not d:
                     continue
                 s['value'] = d.get('value', 0)
@@ -388,7 +375,7 @@ class CreateTokenView(APIView):
 
         # create token
         amount: float = form_data.get('amount') or 0
-        created_hash: str | None; address: str | None = wallet_handler.create_token(
+        created_hash, address = wallet_handler.create_token(
             chain=chain, 
             private_key=wallet.private_key, 
             name=form_data['name'], 
@@ -473,8 +460,13 @@ class CoinCrossQuoteView(APIView):
         form_data: dict = dict(form.data)
 
         wallet_handler: WalletHandler = WalletHandler()
-        status: int; data: dict = wallet_handler.token_cross_quote(form_data=form_data)
-        return Response(data=data.get('data', {}), status=status)
+        status, res = wallet_handler.token_cross_quote(form_data=form_data)
+        data: dict = res.get('data', {})
+        
+        dex_tools: DexTools = DexTools()
+        token_address: str = data.get('provider_data', {}).get('cross_chain_fee_token_address', '').replace('0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', constants.ZERO_ADDRESS)
+        data['provider_data']['cross_chain_fee_token'] = dex_tools.token_base(chain=form_data['fromData']['chain'], address=token_address)
+        return Response(data=data, status=status)
         
 
 class CoinCrossView(APIView):
@@ -501,7 +493,7 @@ class CoinCrossView(APIView):
         form_data['fromData']['walletAddress'] = wallet.address
 
         wallet_handler: WalletHandler = WalletHandler()
-        status: int; data: dict = wallet_handler.token_cross(form_data=form_data)
+        status, data = wallet_handler.token_cross(form_data=form_data)
         if status != 200:
             return ResponseUtil.no_data(msg = data['message'])
         hash_tx: str = data.get('data', {}).get('trx_hash')
@@ -543,7 +535,7 @@ class CoinCrossStatusView(APIView):
             return ResponseUtil.no_data(msg = 'Hash does not exist.')
         
         wallet_handler: WalletHandler = WalletHandler()
-        status_code: int; data: dict = wallet_handler.token_cross_status(provider=provider, chain=chain, hash_tx=hash_tx)
+        status_code, data = wallet_handler.token_cross_status(provider=provider, chain=chain, hash_tx=hash_tx)
         if status_code != 200:
             return ResponseUtil.no_data(msg = data['message'])
         

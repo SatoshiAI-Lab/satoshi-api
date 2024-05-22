@@ -2,6 +2,7 @@ import os
 from typing import Any
 import requests
 from django.core.cache import cache
+from utils import constants
 
 from utils.fetch import MultiFetch
 from subscribe import models as subscribe_models
@@ -13,6 +14,26 @@ class DexTools():
         'x-api-key': os.getenv(key='DEX_KEY'),
         'accept': 'application/json',
     }
+
+    @classmethod
+    def token_base(cls, chain: str, address: str) -> dict | None:
+        if address == constants.ZERO_ADDRESS:
+            return constants.CHAIN_DICT[chain]['token']
+        urls: list[str] = [
+            f'{cls.domain}/token/{chain}/{address}',
+        ]
+        res: dict[str, Any] = MultiFetch.fetch_multiple_urls(headers=cls.headers, urls=urls)
+        token_data: dict[str, Any] = res[urls[0]].get('data')
+        if not token_data:
+            return
+        data: dict = dict(
+            symbol = token_data['symbol'],
+            name = token_data['name'],
+            decimals = token_data['decimals'],
+            logo = token_data['logo'],
+            address = address,
+        )
+        return data
 
     @classmethod
     def token_info(cls, chain: str, address: str) -> dict:

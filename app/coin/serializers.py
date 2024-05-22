@@ -1,7 +1,7 @@
 from typing import Any
 from rest_framework import serializers
 
-from . import models;
+from . import models
 import os
 from urllib.parse import urljoin
 

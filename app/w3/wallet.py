@@ -3,6 +3,7 @@ from django.core.cache import cache
 
 import json
 import os
+import copy
 from eth_typing import ChecksumAddress
 import requests
 import re
@@ -124,7 +125,7 @@ class WalletHandler():
             if response.status_code != 200:
                 return 
             data: dict[str, Any] = response.json().get('data', {})
-            secretKey: str | None; publicKey: str | None = data.get('secretKey'), data.get('publicKey')
+            secretKey, publicKey = data.get('secretKey'), data.get('publicKey')
             address: str = publicKey
         else:
             account: LocalAccount = Account.create()
@@ -136,7 +137,7 @@ class WalletHandler():
     
     async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict:
         tasks: list = []
-        results: dict[str, Any] = {}
+        results: dict[str, dict[str, Any]] = {}
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
@@ -147,7 +148,7 @@ class WalletHandler():
             for result in completed_tasks:
                 if isinstance(result, Exception):
                     continue
-                chain: str; address: str; data: dict[str, Any] = result
+                chain, address, data = result
                 if chain not in results:
                     results[chain] = {}
                 results[chain][address] = data
@@ -176,8 +177,7 @@ class WalletHandler():
             "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
         }
 
-        # timeout = ClientTimeout(connect=3, sock_read=6)
-        async with session.get(url=url, headers=headers, timeout=6) as response:
+        async with session.get(url=url, headers=headers, timeout=15) as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -209,7 +209,7 @@ class WalletHandler():
                 name = item['contract_name'],
                 decimals = item['contract_decimals'],
                 amount = item['balance'],
-                address = re.sub(pattern=r"0xe{40}|0xe{41}|1{32}", repl=constants.ZERO_ADDRESS, string=item['contract_address']),
+                address = re.sub(pattern=r"0xe{40}|1{32}|0x0{36}800a", repl=constants.ZERO_ADDRESS, string=item['contract_address']),
                 price_usd = price_usd,
                 value_usd = item['quote'],
                 price_change_24h = price_change,

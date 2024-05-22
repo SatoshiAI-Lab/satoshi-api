@@ -29,6 +29,21 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 
+class ChainView(APIView):
+    @method_decorator(decorator=cache_page(timeout=5 * 60))
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        data: dict[str, list[dict] | list[str]] = {
+            "chains": [dict(
+                name=c, 
+                logo=f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{c}.png", 
+                platform = constants.CHAIN_DICT[c]['platform'],
+                token = constants.CHAIN_DICT[c]['token'],
+            ) for c in constants.CHAIN_DICT], 
+            "platforms": constants.PLATFORM_LIST,
+        }
+        return ResponseUtil.success(data=data)
+
+
 class CoinSearchView(APIView):
     permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
 

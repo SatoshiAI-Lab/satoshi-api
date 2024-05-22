@@ -4,7 +4,6 @@ from django.urls.resolvers import URLPattern
 from .views import *
 
 urlpatterns: list[URLPattern] = [
-    path(route='chain/', view=ChainView.as_view(),  name='chain'),
     path(route="register/", view=UserRegistrationView.as_view(), name="user-registration"),
     path(route="mine/", view=MineView.as_view(), name="mine"),
 
