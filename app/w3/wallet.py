@@ -39,6 +39,7 @@ def retry(retries: int=3, delay: int=1):
                     if attempt == retries:
                         return
                     delay *= 2  # Exponential backoff
+                    # await asyncio.sleep(delay)
         return wrapped_f
     return wrapper
 
@@ -177,7 +178,7 @@ class WalletHandler():
             "X-Requested-With": "com.covalenthq.sdk.python/0.9.8"
         }
 
-        async with session.get(url=url, headers=headers, timeout=15) as response:
+        async with session.get(url=url, headers=headers, timeout=5) as response:
             if response.status == 200:
                 return await response.json()
             else:
