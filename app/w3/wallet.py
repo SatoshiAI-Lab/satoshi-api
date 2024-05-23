@@ -283,17 +283,20 @@ class WalletHandler():
             logo = f"{os.getenv(key='S3_DOMAIN')}/chains/logo/{chain}.png",
         )
         for item in items:
-            tokens.append(dict(
-                symbol = item['symbol'],
-                name = item['name'],
-                decimals = item['decimals'],
-                amount = int(float(x=item.get('balance', 0)))/(10 ** int(x=item['decimals'])),
-                address = item['token_address'],
-                price_usd = None,
-                value_usd = None,
-                price_change_24h = None,
-                logo = None,
-            ))
+            try:
+                tokens.append(dict(
+                    symbol = item['symbol'],
+                    name = item['name'],
+                    decimals = item['decimals'],
+                    amount = int(float(item.get('balance', 0)))/(10 ** int(item['decimals'])),
+                    address = item['token_address'],
+                    price_usd = None,
+                    value_usd = None,
+                    price_change_24h = None,
+                    logo = None,
+                ))
+            except Exception as e:
+                print(e)
         json_data: dict[str, Any] = dict(address=address, value=value, tokens=tokens, chain=chain)
         return json_data
     
