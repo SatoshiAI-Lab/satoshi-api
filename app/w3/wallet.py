@@ -177,7 +177,6 @@ class WalletHandler():
 
             if tasks:
                 results.update(await self._execute_batch(tasks))
-                elapsed_time: float = time.perf_counter() - start_time
         return results
 
     async def _execute_batch(self, tasks: list) -> dict[str, dict[str, Any]]:
