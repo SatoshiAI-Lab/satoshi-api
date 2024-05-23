@@ -159,7 +159,8 @@ class WalletHandler():
         batch_size = 25
         wait_time: float = 1.2
         tasks: list = []
-        results: dict[str, dict[str, Any]] = {}
+        results: list[Any | BaseException] = []
+        data: dict[str, dict[str, Any]] = {}
 
         async with aiohttp.ClientSession() as session:
             for address in address_list:
@@ -169,28 +170,26 @@ class WalletHandler():
                     
                     if len(tasks) >= batch_size:
                         start_time: float = time.perf_counter()
-                        results.update(await self._execute_batch(tasks))
+                        results.extend(await self._execute_batch(tasks))
                         tasks.clear()
                         elapsed_time: float = time.perf_counter() - start_time
                         if elapsed_time < wait_time:
                             await asyncio.sleep(wait_time - elapsed_time)
-
             if tasks:
-                results.update(await self._execute_batch(tasks))
-        return results
-
-    async def _execute_batch(self, tasks: list) -> dict[str, dict[str, Any]]:
-        results: dict[str, dict[str, Any]] = {}
-        completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
+                results.extend(await self._execute_batch(tasks))
         
-        for result in completed_tasks:
+        for result in results:
             if isinstance(result, Exception):
                 continue
-            chain, address, data = result
-            if chain not in results:
-                results[chain] = {}
-            results[chain][address] = data
-        return results
+            chain, address, json_data = result
+            if chain not in data:
+                data[chain] = {}
+            data[chain][address] = json_data
+        return data
+    
+    async def _execute_batch(self, tasks: list) -> list[Any | BaseException]:
+        completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
+        return completed_tasks
 
     async def get_balances(self, chain: str, address: str, session: aiohttp.ClientSession) -> tuple[str, str, dict]:
         chain_data = dict(
