@@ -460,16 +460,16 @@ class CoinCrossQuoteView(APIView):
         form_data: dict = dict(form.data)
 
         wallet_handler: WalletHandler = WalletHandler()
-        status, resp = wallet_handler.token_cross_quote(form_data=form_data)
-        if status != 200:
-            return ResponseUtil.custom(status=status, msg = resp['message'])
+        status_code, resp = wallet_handler.token_cross_quote(form_data=form_data)
+        if status_code != 200 or resp.get('code') != 200:
+            return ResponseUtil.custom(status=status_code, code=resp['code'], msg = resp['message'])
         
         data: dict = resp.get('data', {})
         
         dex_tools: DexTools = DexTools()
         token_address: str = data.get('provider_data', {}).get('cross_chain_fee_token_address', '').replace('0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', constants.ZERO_ADDRESS)
         data['provider_data']['cross_chain_fee_token'] = dex_tools.token_base(chain=form_data['fromData']['chain'], address=token_address)
-        return ResponseUtil.custom(status=status, data=data, msg='OK')
+        return ResponseUtil.custom(status=status_code, code = resp['code'], data=data, msg='OK')
         
 
 class CoinCrossView(APIView):
@@ -496,11 +496,11 @@ class CoinCrossView(APIView):
         form_data['fromData']['walletAddress'] = wallet.address
 
         wallet_handler: WalletHandler = WalletHandler()
-        status, data = wallet_handler.token_cross(form_data=form_data)
-        if status != 200:
-            return ResponseUtil.no_data(msg = data['message'])
+        status_code, resp = wallet_handler.token_cross(form_data=form_data)
+        if status_code != 200 or resp.get('code') != 200:
+            return ResponseUtil.custom(status=status_code, code=resp['code'], msg = resp['message'])
         
-        hash_tx: str = data.get('data', {}).get('trx_hash')
+        hash_tx: str = resp.get('data', {}).get('trx_hash')
 
         WalletLog.objects.create(
             chain=chain,
@@ -540,8 +540,8 @@ class CoinCrossStatusView(APIView):
         
         wallet_handler: WalletHandler = WalletHandler()
         status_code, resp = wallet_handler.token_cross_status(provider=provider, chain=chain, hash_tx=hash_tx)
-        if status_code != 200:
-            return ResponseUtil.custom(status=status_code, msg = resp['message'])
+        if status_code != 200 or resp.get('code') != 200:
+            return ResponseUtil.custom(status=status_code, code=resp['code'], msg = resp['message'])
         
         status_data: dict = resp.get('data', {})
         status: str = status_data.get('status')

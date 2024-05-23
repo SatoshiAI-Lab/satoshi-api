@@ -466,7 +466,7 @@ class WalletHandler():
         response: requests.Response = requests.post(url=target_url, json=form_data)
         if response.status_code != 200:
             logger.error(msg=f'{response.status_code} {response.text}')
-            return response.status_code, dict(message=response.text)
+            return response.status_code, dict(code=response.status_code, message=response.text)
         return response.status_code, response.json()
     
     def token_cross(self, form_data: dict) -> tuple[int, dict]:
@@ -475,7 +475,7 @@ class WalletHandler():
         response: requests.Response = requests.post(url=target_url, json=form_data)
         if response.status_code != 200:
             logger.error(msg=f'{response.status_code} {response.text}')
-            return response.status_code, dict(message=response.text)
+            return response.status_code, dict(code=response.status_code, message=response.text)
         return response.status_code, response.json()
     
     def token_cross_status(self, provider: str, chain: str, hash_tx: str) -> tuple[int, dict]:
@@ -483,5 +483,5 @@ class WalletHandler():
         response: requests.Response = requests.get(url=target_url, params=dict(from_net=chain, trx_hash=hash_tx))
         if response.status_code != 200:
             logger.error(msg=f'{response.status_code} {response.text}')
-            return response.status_code, dict(message=response.text)
+            return response.status_code, dict(code=response.status_code, message=response.text)
         return response.status_code, response.json()
