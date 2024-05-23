@@ -169,7 +169,7 @@ class DefinedAPI():
                     networkId
                     symbol
                     info {
-                    imageThumbUrl
+                    imageSmallUrl
                     }
                 }
                 }
@@ -187,7 +187,7 @@ class DefinedAPI():
             if len(kw) < 30 and not str(token.get('symbol', '')).lower().startswith(kw.lower()):
                 continue
             coin_data: dict = dict(
-                logo = token.get('info', {}).get('imageThumbUrl'),
+                logo = token.get('info', {}).get('imageSmallUrl'),
                 address = token.get('address'),
                 name = token.get('name'),
                 symbol = token.get('symbol'),
