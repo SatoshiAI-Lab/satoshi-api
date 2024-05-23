@@ -174,7 +174,7 @@ class PoolSearchView(APIView):
     
 
 class CoinQueryView(APIView):
-    @method_decorator(decorator=cache_page(timeout=1 * 60))
+    # @method_decorator(decorator=cache_page(timeout=1 * 60))
     def get(self, request: Request) -> Response:
         form: forms.CoinSearchForms = forms.CoinSearchForms(data=request.query_params)
         if not form.is_valid():
