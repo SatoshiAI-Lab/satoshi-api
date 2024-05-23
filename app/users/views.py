@@ -460,8 +460,11 @@ class CoinCrossQuoteView(APIView):
         form_data: dict = dict(form.data)
 
         wallet_handler: WalletHandler = WalletHandler()
-        status, res = wallet_handler.token_cross_quote(form_data=form_data)
-        data: dict = res.get('data', {})
+        status, resp = wallet_handler.token_cross_quote(form_data=form_data)
+        if status != 200:
+            return ResponseUtil.custom(status=status, msg = resp['message'])
+        
+        data: dict = resp.get('data', {})
         
         dex_tools: DexTools = DexTools()
         token_address: str = data.get('provider_data', {}).get('cross_chain_fee_token_address', '').replace('0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', constants.ZERO_ADDRESS)
@@ -496,6 +499,7 @@ class CoinCrossView(APIView):
         status, data = wallet_handler.token_cross(form_data=form_data)
         if status != 200:
             return ResponseUtil.no_data(msg = data['message'])
+        
         hash_tx: str = data.get('data', {}).get('trx_hash')
 
         WalletLog.objects.create(
