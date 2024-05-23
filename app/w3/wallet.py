@@ -3,7 +3,7 @@ from django.core.cache import cache
 
 import json
 import os
-import copy
+import time
 from eth_typing import ChecksumAddress
 import requests
 import re
@@ -136,25 +136,63 @@ class WalletHandler():
             publicKey: str = publicKey.to_hex()
         return secretKey, publicKey, address
     
-    async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict:
+    # async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict:
+    #     tasks: list = []
+    #     results: dict[str, dict[str, Any]] = {}
+    #     async with aiohttp.ClientSession() as session:
+    #         for address in address_list:
+    #             for chain in chain_list:
+    #                 if await self.identify_platform(address=address) == constants.CHAIN_DICT[chain]['platform']:
+    #                     tasks.append(self.get_balances(chain=chain, address=address, session=session))
+
+    #         completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
+    #         for result in completed_tasks:
+    #             if isinstance(result, Exception):
+    #                 continue
+    #             chain, address, data = result
+    #             if chain not in results:
+    #                 results[chain] = {}
+    #             results[chain][address] = data
+    #     return results
+
+    async def multi_get_balances(self, address_list: list[str], chain_list: list[str]) -> dict[str, dict[str, Any]]:
+        batch_size = 25
+        wait_time: float = 1.2
         tasks: list = []
         results: dict[str, dict[str, Any]] = {}
+
         async with aiohttp.ClientSession() as session:
             for address in address_list:
                 for chain in chain_list:
                     if await self.identify_platform(address=address) == constants.CHAIN_DICT[chain]['platform']:
                         tasks.append(self.get_balances(chain=chain, address=address, session=session))
+                    
+                    if len(tasks) >= batch_size:
+                        start_time: float = time.perf_counter()
+                        results.update(await self._execute_batch(tasks))
+                        tasks.clear()
+                        elapsed_time: float = time.perf_counter() - start_time
+                        if elapsed_time < wait_time:
+                            await asyncio.sleep(wait_time - elapsed_time)
 
-            completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
-            for result in completed_tasks:
-                if isinstance(result, Exception):
-                    continue
-                chain, address, data = result
-                if chain not in results:
-                    results[chain] = {}
-                results[chain][address] = data
+            if tasks:
+                results.update(await self._execute_batch(tasks))
+                elapsed_time: float = time.perf_counter() - start_time
         return results
-    
+
+    async def _execute_batch(self, tasks: list) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
+        completed_tasks: list[Any | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for result in completed_tasks:
+            if isinstance(result, Exception):
+                continue
+            chain, address, data = result
+            if chain not in results:
+                results[chain] = {}
+            results[chain][address] = data
+        return results
+
     async def get_balances(self, chain: str, address: str, session: aiohttp.ClientSession) -> tuple[str, str, dict]:
         chain_data = dict(
             id = str(object=constants.CHAIN_DICT[chain]['id']),
@@ -179,6 +217,7 @@ class WalletHandler():
         }
 
         async with session.get(url=url, headers=headers, timeout=5) as response:
+            # logger.warning(msg=f"{response.status} {chain} {address}")
             if response.status == 200:
                 return await response.json()
             else:
