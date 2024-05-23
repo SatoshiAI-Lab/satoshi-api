@@ -142,7 +142,7 @@ class DefinedAPI():
                 liquidity: { gt: %s }
                 # network: [1]
                 }
-                limit: 100
+                limit: 200
                 offset: 0
                 phrase: "%s"
             ) {
@@ -175,7 +175,7 @@ class DefinedAPI():
                 }
             }
             }
-            """ % (2000 if len(kw) < 30 else 0, kw)
+            """ % (5000 if len(kw) < 30 else 0, kw)
         }
         response: requests.Response = requests.request(method="POST", url=url, headers=headers, data=json.dumps(obj=payload))
         if response.status_code != 200:
