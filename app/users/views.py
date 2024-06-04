@@ -554,7 +554,7 @@ class CoinCrossStatusView(APIView):
         data=dict(status=status)
         if 'toTxHash' in status_data:
             data['to_hash_tx'] = status_data['toTxHash']
-            to_chain: str = constants.CHAIN_DICT_FROM_ID.get(status_data.get('toChainId', ''))
+            to_chain: str = constants.CHAIN_DICT_FROM_ID.get(str(status_data.get('toChainId', '') or ''))
             data['to_url'] = constants.CHAIN_DICT[to_chain]['tx_url'] + status_data['toTxHash'] if to_chain else None
         
         return ResponseUtil.success(data=data)
